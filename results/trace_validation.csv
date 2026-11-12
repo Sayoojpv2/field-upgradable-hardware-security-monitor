@@ -1,0 +1,7 @@
+policy,benign_rejected,malicious_accepted,false_positive_rate,false_negative_rate,hardware_check,gate
+policy_v1,0,104,0.0,0.6541,-,-
+policy_v2,0,62,0.0,0.3899,PASS,recommended
+policy_v3,0,31,0.0,0.195,PASS,recommended
+policy_v4,0,0,0.0,0.0,PASS,recommended
+cand_v2_overbroad,23,57,0.0723,0.3585,PASS,NOT recommended
+cand_v5_dma_reopen,0,42,0.0,0.2642,PASS,NOT recommended

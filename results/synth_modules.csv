@@ -1,0 +1,6 @@
+module,gate_cells,flip_flops
+policy_bank,2680,1281
+bus_security_monitor,3496,9
+policy_update_controller,635,122
+policy_validator,4775,22
+security_monitor_top,0,0

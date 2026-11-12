@@ -1,0 +1,12 @@
+# Copy to local.mk (git-ignored) when the tools are not on PATH. Example for a Windows laptop
+# with MSYS2 packages unpacked under ~/tools/msys2-eda and yowasp-yosys from pip --user:
+#
+# Native Windows make starts tools via CreateProcess, so use a Windows-style PATH entry:
+# export PATH := C:\Users\<you>\tools\msys2-eda\ucrt64\bin;$(PATH)
+# CC       := gcc
+# IVERILOG := iverilog
+# VVP      := vvp
+# YOSYS    := C:/Users/<you>/AppData/Roaming/Python/Python314/Scripts/yowasp-yosys.exe
+# RISCV_CC := riscv64-unknown-elf-gcc
+# PYTHON   := python
+# VENV_FLAGS := --system-site-packages    # reuse already-installed matplotlib / yowasp

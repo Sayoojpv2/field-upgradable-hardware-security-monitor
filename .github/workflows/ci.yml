@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install simulator and compiler
+        run: sudo apt-get update && sudo apt-get install -y iverilog gcc make
+
+      - name: Tool versions
+        run: |
+          iverilog -V 2>&1 | head -1
+          gcc --version | head -1
+          python3 --version
+
+      - name: Python, C, RTL tests and mutation check
+        run: make test PYTHON=python3
+
+      - name: Synthesis (Yosys via yowasp)
+        run: make synth PYTHON=python3 YOSYS=.venv/bin/yowasp-yosys
+
+      - name: End-to-end demo
+        run: make demo PYTHON=python3
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: |
+            results/
+            build/results/
+            build/reports/

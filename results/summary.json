@@ -1,0 +1,297 @@
+{
+  "latency": [
+    {
+      "nrules": 2,
+      "policy_rules": 2,
+      "validate_cycles": 6,
+      "update_cycles": 20,
+      "mmio_writes": 12,
+      "switch_hold_cycles": 2,
+      "decision_latency_cycles": 1,
+      "package_bytes": 144
+    },
+    {
+      "nrules": 4,
+      "policy_rules": 4,
+      "validate_cycles": 13,
+      "update_cycles": 33,
+      "mmio_writes": 18,
+      "switch_hold_cycles": 2,
+      "decision_latency_cycles": 1,
+      "package_bytes": 168
+    },
+    {
+      "nrules": 6,
+      "policy_rules": 6,
+      "validate_cycles": 24,
+      "update_cycles": 50,
+      "mmio_writes": 24,
+      "switch_hold_cycles": 2,
+      "decision_latency_cycles": 1,
+      "package_bytes": 192
+    },
+    {
+      "nrules": 8,
+      "policy_rules": 8,
+      "validate_cycles": 39,
+      "update_cycles": 71,
+      "mmio_writes": 30,
+      "switch_hold_cycles": 2,
+      "decision_latency_cycles": 1,
+      "package_bytes": 216
+    }
+  ],
+  "designs": [
+    {
+      "design": "static",
+      "policy": "policy_v1 (fixed at synthesis)",
+      "benign_accepted": 318,
+      "benign_rejected": 0,
+      "malicious_accepted": 104,
+      "malicious_rejected": 55
+    },
+    {
+      "design": "configurable (unbounded)",
+      "policy": "policy_v1",
+      "benign_accepted": 318,
+      "benign_rejected": 0,
+      "malicious_accepted": 104,
+      "malicious_rejected": 55
+    },
+    {
+      "design": "configurable (unbounded)",
+      "policy": "policy_v4",
+      "benign_accepted": 318,
+      "benign_rejected": 0,
+      "malicious_accepted": 0,
+      "malicious_rejected": 159
+    },
+    {
+      "design": "bounded dual-bank",
+      "policy": "policy_v1",
+      "benign_accepted": 318,
+      "benign_rejected": 0,
+      "malicious_accepted": 104,
+      "malicious_rejected": 55
+    },
+    {
+      "design": "bounded dual-bank",
+      "policy": "policy_v4",
+      "benign_accepted": 318,
+      "benign_rejected": 0,
+      "malicious_accepted": 0,
+      "malicious_rejected": 159
+    }
+  ],
+  "malicious_summary": [
+    {
+      "design": "configurable (unbounded)",
+      "attacks": 8,
+      "updates_took_effect": 8,
+      "malicious_accepted_total": 99,
+      "benign_rejected_total": 31
+    },
+    {
+      "design": "bounded dual-bank",
+      "attacks": 8,
+      "updates_took_effect": 0,
+      "malicious_accepted_total": 0,
+      "benign_rejected_total": 0
+    }
+  ],
+  "transient": [
+    {
+      "design": "configurable (unbounded)",
+      "transition": "v1->v2",
+      "runs": 20,
+      "decisions": 1500,
+      "affected_decisions": 85,
+      "old_after_new": 0,
+      "wrong_unaffected": 18,
+      "inconsistent": 18,
+      "update_window_cycles": 16.0,
+      "hold_cycles_per_update": 0.0
+    },
+    {
+      "design": "configurable (unbounded)",
+      "transition": "v2->v3",
+      "runs": 20,
+      "decisions": 1540,
+      "affected_decisions": 65,
+      "old_after_new": 0,
+      "wrong_unaffected": 14,
+      "inconsistent": 14,
+      "update_window_cycles": 18.0,
+      "hold_cycles_per_update": 0.0
+    },
+    {
+      "design": "configurable (unbounded)",
+      "transition": "v3->v4",
+      "runs": 20,
+      "decisions": 1540,
+      "affected_decisions": 65,
+      "old_after_new": 2,
+      "wrong_unaffected": 0,
+      "inconsistent": 2,
+      "update_window_cycles": 18.0,
+      "hold_cycles_per_update": 0.0
+    },
+    {
+      "design": "bounded dual-bank",
+      "transition": "v1->v2",
+      "runs": 20,
+      "decisions": 2340,
+      "affected_decisions": 165,
+      "old_after_new": 0,
+      "wrong_unaffected": 0,
+      "inconsistent": 0,
+      "update_window_cycles": 74.2,
+      "hold_cycles_per_update": 16.2
+    },
+    {
+      "design": "bounded dual-bank",
+      "transition": "v2->v3",
+      "runs": 20,
+      "decisions": 2400,
+      "affected_decisions": 102,
+      "old_after_new": 0,
+      "wrong_unaffected": 0,
+      "inconsistent": 0,
+      "update_window_cycles": 75.9,
+      "hold_cycles_per_update": 14.9
+    },
+    {
+      "design": "bounded dual-bank",
+      "transition": "v3->v4",
+      "runs": 20,
+      "decisions": 2400,
+      "affected_decisions": 96,
+      "old_after_new": 0,
+      "wrong_unaffected": 0,
+      "inconsistent": 0,
+      "update_window_cycles": 75.9,
+      "hold_cycles_per_update": 14.9
+    }
+  ],
+  "gate": [
+    {
+      "policy": "policy_v1",
+      "benign_rejected": 0,
+      "malicious_accepted": 104,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.6541,
+      "hardware_check": "-",
+      "gate": "-"
+    },
+    {
+      "policy": "policy_v2",
+      "benign_rejected": 0,
+      "malicious_accepted": 62,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.3899,
+      "hardware_check": "PASS",
+      "gate": "recommended"
+    },
+    {
+      "policy": "policy_v3",
+      "benign_rejected": 0,
+      "malicious_accepted": 31,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.195,
+      "hardware_check": "PASS",
+      "gate": "recommended"
+    },
+    {
+      "policy": "policy_v4",
+      "benign_rejected": 0,
+      "malicious_accepted": 0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0,
+      "hardware_check": "PASS",
+      "gate": "recommended"
+    },
+    {
+      "policy": "cand_v2_overbroad",
+      "benign_rejected": 23,
+      "malicious_accepted": 57,
+      "false_positive_rate": 0.0723,
+      "false_negative_rate": 0.3585,
+      "hardware_check": "PASS",
+      "gate": "NOT recommended"
+    },
+    {
+      "policy": "cand_v5_dma_reopen",
+      "benign_rejected": 0,
+      "malicious_accepted": 42,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.2642,
+      "hardware_check": "PASS",
+      "gate": "NOT recommended"
+    }
+  ],
+  "synth_n8": {
+    "static": {
+      "gate_cells": "330",
+      "flip_flops": "9",
+      "lut6": "61"
+    },
+    "configurable (unbounded)": {
+      "gate_cells": "4721",
+      "flip_flops": "649",
+      "lut6": "831"
+    },
+    "bounded dual-bank": {
+      "gate_cells": "11606",
+      "flip_flops": "1432",
+      "lut6": "3514"
+    }
+  },
+  "fault_injection": {
+    "fault_points": [
+      {
+        "fault_point": "package_stored",
+        "expected": 2,
+        "restored": 2,
+        "retry_ok": 1
+      },
+      {
+        "fault_point": "rules_partial",
+        "expected": 2,
+        "restored": 2,
+        "retry_ok": 1
+      },
+      {
+        "fault_point": "validating",
+        "expected": 2,
+        "restored": 2,
+        "retry_ok": 1
+      },
+      {
+        "fault_point": "ready",
+        "expected": 2,
+        "restored": 2,
+        "retry_ok": 1
+      },
+      {
+        "fault_point": "switch_requested",
+        "expected": 2,
+        "restored": 2,
+        "retry_ok": 1
+      },
+      {
+        "fault_point": "activated",
+        "expected": 2,
+        "restored": 2,
+        "retry_ok": 1
+      },
+      {
+        "fault_point": "committed",
+        "expected": 3,
+        "restored": 3,
+        "retry_ok": 1
+      }
+    ],
+    "torn_write_runs": 205,
+    "torn_write_recovered": 205
+  }
+}

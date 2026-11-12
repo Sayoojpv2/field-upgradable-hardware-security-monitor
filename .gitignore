@@ -1,0 +1,9 @@
+# build outputs, generated device config, private test keys
+build/
+.venv/
+local.mk
+__pycache__/
+*.pyc
+.pytest_cache/
+*.vcd
+*.key

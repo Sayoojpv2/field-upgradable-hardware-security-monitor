@@ -1,0 +1,5 @@
+nrules,policy_rules,validate_cycles,update_cycles,mmio_writes,switch_hold_cycles,decision_latency_cycles,package_bytes
+2,2,6,20,12,2,1,144
+4,4,13,33,18,2,1,168
+6,6,24,50,24,2,1,192
+8,8,39,71,30,2,1,216

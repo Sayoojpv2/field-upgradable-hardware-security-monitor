@@ -1,0 +1,59 @@
+{
+  "description": "Scenario 3: DMA owner lowers its maximum burst from 64 to 16 beats.",
+  "device_id": "0x48534D01",
+  "requester": "DMA",
+  "policy_version": 4,
+  "prev_version": 3,
+  "rules": [
+    {
+      "slot": 0,
+      "owner": "CPU",
+      "start": "0x00000000",
+      "end": "0x0000EFFF",
+      "read": true,
+      "write": true,
+      "priv": false,
+      "max_burst": 16
+    },
+    {
+      "slot": 1,
+      "owner": "DMA",
+      "start": "0x10000000",
+      "end": "0x10007FFF",
+      "read": true,
+      "write": true,
+      "priv": false,
+      "max_burst": 16
+    },
+    {
+      "slot": 2,
+      "owner": "DIAG",
+      "start": "0x20000000",
+      "end": "0x2000FFFF",
+      "read": true,
+      "write": false,
+      "priv": true,
+      "max_burst": 4
+    },
+    {
+      "slot": 3,
+      "owner": "DMA",
+      "start": "0x10009000",
+      "end": "0x1000FFFF",
+      "read": true,
+      "write": true,
+      "priv": false,
+      "max_burst": 16
+    },
+    {
+      "slot": 4,
+      "owner": "CPU",
+      "start": "0x0000F000",
+      "end": "0x0000FFFF",
+      "read": true,
+      "write": true,
+      "priv": true,
+      "max_burst": 4
+    }
+  ]
+}

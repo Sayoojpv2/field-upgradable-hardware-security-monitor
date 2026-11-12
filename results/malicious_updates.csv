@@ -1,0 +1,17 @@
+design,attack,update_took_effect,hw_error,benign_accepted,benign_rejected,malicious_accepted,malicious_rejected
+configurable (unbounded),atk_diag_unpriv,1,0,318,0,10,149
+configurable (unbounded),atk_diag_write,1,0,318,0,10,149
+configurable (unbounded),atk_dma_burst,1,0,318,0,16,143
+configurable (unbounded),atk_dma_claim_slot,1,0,318,0,0,159
+configurable (unbounded),atk_dma_expand,1,0,318,0,1,158
+configurable (unbounded),atk_dma_foreign_delete,1,0,287,31,0,159
+configurable (unbounded),atk_dma_foreign_modify,1,0,318,0,31,128
+configurable (unbounded),atk_dma_overlap,1,0,318,0,31,128
+bounded dual-bank,atk_diag_unpriv,0,8,318,0,0,159
+bounded dual-bank,atk_diag_write,0,7,318,0,0,159
+bounded dual-bank,atk_dma_burst,0,9,318,0,0,159
+bounded dual-bank,atk_dma_claim_slot,0,10,318,0,0,159
+bounded dual-bank,atk_dma_expand,0,6,318,0,0,159
+bounded dual-bank,atk_dma_foreign_delete,0,10,318,0,0,159
+bounded dual-bank,atk_dma_foreign_modify,0,10,318,0,0,159
+bounded dual-bank,atk_dma_overlap,0,11,318,0,0,159

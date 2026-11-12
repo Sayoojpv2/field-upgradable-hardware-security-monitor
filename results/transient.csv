@@ -1,0 +1,7 @@
+design,transition,runs,decisions,affected_decisions,old_after_new,wrong_unaffected,inconsistent,update_window_cycles,hold_cycles_per_update
+configurable (unbounded),v1->v2,20,1500,85,0,18,18,16.0,0.0
+configurable (unbounded),v2->v3,20,1540,65,0,14,14,18.0,0.0
+configurable (unbounded),v3->v4,20,1540,65,2,0,2,18.0,0.0
+bounded dual-bank,v1->v2,20,2340,165,0,0,0,74.2,16.2
+bounded dual-bank,v2->v3,20,2400,102,0,0,0,75.9,14.9
+bounded dual-bank,v3->v4,20,2400,96,0,0,0,75.9,14.9
