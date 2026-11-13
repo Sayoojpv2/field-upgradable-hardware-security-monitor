@@ -7,5 +7,6 @@
 void hal_host_reset(void);            /* hardware reset (power-on / power loss): volatile state lost */
 void hal_host_set_log(FILE *f);       /* record every access for RTL replay (NULL = off) */
 void hal_host_log_marker(unsigned id);
+void hal_host_set_bus_idle(int idle);  /* 0: ACTIVATE waits in WAIT_IDLE (busy) until ABORT */
 
 #endif

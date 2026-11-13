@@ -124,3 +124,42 @@ def test_gate_explains_regressions():
     r = tv.compare(pol("policy_v4"), pol("candidates/cand_v5_dma_reopen"), tv.gen_traces())
     assert r["hardware_check"] == "PASS" and r["diff"]["regressions_malicious"]
     assert {s for _, s, _ in r["remaining_undetected"]} == {"s1", "boundary"}
+
+
+# ---- audit regressions -------------------------------------------------------------------
+def _write(tmp_path, d):
+    p = tmp_path / "p.json"
+    p.write_text(json.dumps(d))
+    return p
+
+
+def test_loader_rejects_ambiguous_or_out_of_range_input(tmp_path):
+    good = policy_to_json(pol("policy_v4"))
+    load_policy(_write(tmp_path, good))
+    for field, bad in (("write", "false"), ("read", 1), ("max_burst", 256), ("start", "0x100000000"),
+                       ("slot", 8), ("owner", "GPU"), ("end", -1)):
+        d = json.loads(json.dumps(good))
+        d["rules"][0][field] = bad
+        with pytest.raises(ValueError):
+            load_policy(_write(tmp_path, d))
+    d = json.loads(json.dumps(good)); d["rules"].append(dict(d["rules"][0]))
+    with pytest.raises(ValueError, match="duplicate slot"):
+        load_policy(_write(tmp_path, d))
+
+
+def test_gate_refuses_changes_no_trace_exercises():
+    v4 = pol("policy_v4")
+    cpu_only = [t for t in tv.gen_traces() if t["master"] == 0]          # no DMA traffic at all
+    r = tv.compare(v4, pol("candidates/cand_v5_dma_reopen"), cpu_only)
+    assert not r["recommended"] and r["uncovered_changes"]
+    assert any("not exercised" in x for x in r["reasons"])
+    assert tv.compare(pol("policy_v3"), v4, tv.gen_traces())["uncovered_changes"] == []
+
+
+def test_gate_expect_flag_exit_codes(tmp_path):
+    trace = tmp_path / "t.csv"
+    tv.write_trace(trace, tv.gen_traces())
+    run = lambda c, e: tv.main(["compare", "--baseline", str(EX / "policy_v4.json"), "--candidate",
+                                str(EX / f"{c}.json"), "--trace", str(trace), "--expect", e])
+    assert run("candidates/cand_v5_dma_reopen", "reject") == 0
+    assert run("candidates/cand_v5_dma_reopen", "recommend") == 1

@@ -19,7 +19,8 @@ static struct {
     unsigned sel, state, req, count, boot_window, malformed, last_err, err_slot;
     uint32_t cand_ver, act_ver, prev_ver;
 } m;
-static FILE *logf;
+static FILE *log_fp;
+static unsigned bus_idle = 1;
 
 /* Mirror of the immutable authority table in rtl/hsm_defs.svh */
 static const struct { uint32_t lo, hi; unsigned r, w, burst, pf; } env[HSM_NUM_OWNERS] = {
@@ -28,8 +29,9 @@ static const struct { uint32_t lo, hi; unsigned r, w, burst, pf; } env[HSM_NUM_O
     {0x20000000u, 0x2000FFFFu, 1, 0, 4, 1},
 };
 
-void hal_host_set_log(FILE *f) { logf = f; }
-void hal_host_log_marker(unsigned id) { if (logf) fprintf(logf, "5 %08X 00000000 00000000\n", id); }
+void hal_host_set_log(FILE *f) { log_fp = f; }
+void hal_host_set_bus_idle(int idle) { bus_idle = idle != 0; }
+void hal_host_log_marker(unsigned id) { if (log_fp) fprintf(log_fp, "5 %08X 00000000 00000000\n", id); }
 
 void hal_host_reset(void)
 {
@@ -37,13 +39,14 @@ void hal_host_reset(void)
         for (unsigned k = 0; k < HSM_NRULES; k++) m.bank[b][k].valid = 0;   /* payload is not reset, like the RTL */
     m.sel = 0; m.state = HSM_S_IDLE; m.req = 0; m.count = 0; m.boot_window = 1;
     m.malformed = 0; m.last_err = 0; m.err_slot = 0; m.cand_ver = m.act_ver = m.prev_ver = 0;
-    if (logf) fprintf(logf, "4 00000000 00000000 00000000\n");
+    if (log_fp) fprintf(log_fp, "4 00000000 00000000 00000000\n");
 }
 
 static uint32_t status(void)
 {
-    return m.state | (m.sel << 5) | (m.boot_window << 6) | ((unsigned)(m.state == HSM_S_COMPLETE) << 7) |
-           (m.last_err << 8) | (m.err_slot << 16);    /* BUSY never set: the model is instantaneous */
+    unsigned busy = (m.state == HSM_S_WAIT_IDLE);   /* the only state the model can linger in */
+    return m.state | (busy << 4) | (m.sel << 5) | (m.boot_window << 6) |
+           ((unsigned)(m.state == HSM_S_COMPLETE) << 7) | (m.last_err << 8) | (m.err_slot << 16);
 }
 
 static int same(const mrule_t *a, const mrule_t *c)
@@ -111,10 +114,14 @@ static void command(unsigned c)
         } else if (c == HSM_C_ABORT) m.state = HSM_S_IDLE;
         break;
     case HSM_S_READY:
-        if (c == HSM_C_ACTIVATE) {          /* bus assumed idle: WAIT_IDLE and SWITCH collapse */
+        if (c == HSM_C_ACTIVATE && !bus_idle) m.state = HSM_S_WAIT_IDLE;
+        else if (c == HSM_C_ACTIVATE) {     /* idle bus: WAIT_IDLE and SWITCH collapse */
             m.prev_ver = m.act_ver; m.act_ver = m.cand_ver; m.boot_window = 0;
             m.sel ^= 1u; m.state = HSM_S_COMPLETE;
         } else if (c == HSM_C_ABORT) m.state = HSM_S_IDLE;
+        break;
+    case HSM_S_WAIT_IDLE:
+        if (c == HSM_C_ABORT) m.state = HSM_S_IDLE;
         break;
     case HSM_S_COMPLETE:
         if (c == HSM_C_CONFIRM) m.state = HSM_S_IDLE;
@@ -164,7 +171,7 @@ static uint32_t model_read(uint32_t off)
 void hal_write32(uint32_t off, uint32_t value)
 {
     off &= 0xFFu;                                   /* 8-bit register address, as in the RTL */
-    if (logf) fprintf(logf, "1 %08X %08X 00000000\n", (unsigned)off, (unsigned)value);
+    if (log_fp) fprintf(log_fp, "1 %08X %08X 00000000\n", (unsigned)off, (unsigned)value);
     model_write(off, value);
 }
 
@@ -172,7 +179,7 @@ uint32_t hal_read32(uint32_t off)
 {
     off &= 0xFFu;
     uint32_t v = model_read(off);
-    if (logf) fprintf(logf, "2 %08X %08X 00000000\n", (unsigned)off, (unsigned)v);
+    if (log_fp) fprintf(log_fp, "2 %08X %08X 00000000\n", (unsigned)off, (unsigned)v);
     return v;
 }
 
@@ -180,6 +187,6 @@ int hal_poll32(uint32_t off, uint32_t mask, uint32_t value, uint32_t max_polls)
 {
     (void)max_polls;
     off &= 0xFFu;
-    if (logf) fprintf(logf, "3 %08X %08X %08X\n", (unsigned)off, (unsigned)value, (unsigned)mask);
+    if (log_fp) fprintf(log_fp, "3 %08X %08X %08X\n", (unsigned)off, (unsigned)value, (unsigned)mask);
     return (model_read(off) & mask) == value ? 0 : -1;
 }

@@ -214,7 +214,11 @@ buffer, which saves a third copy of the rules.
   in RECEIVE and only reach the inactive bank. Commands not legal in the current state are ignored.
 - **Safe boundary**: `ACTIVATE` moves to WAIT_IDLE, which deasserts `txn_ready` (no new
   transaction is accepted). The interconnect's `bus_idle` input reports that no granted burst is
-  still in its data phase. When it is high the controller spends one cycle in SWITCH, and
+  still in its data phase. The top level ignores `bus_idle` in any cycle where the monitor has just
+  granted a transaction (`dec_valid && dec_allow`), so an interconnect that registers its
+  outstanding-beat counter, and therefore learns of a grant one cycle late, cannot let the bank
+  flip mid-burst. Interface contract: `bus_idle` must drop no later than one cycle after a grant.
+  When it is high the controller spends one cycle in SWITCH, and
   `bank_sel` flips at the end of that cycle. A transaction is therefore always checked entirely
   against one bank, and the switch cannot be starved by continuous traffic. Measured hold:
   2 cycles on an idle bus, and about 15 cycles on a busy one (waiting for outstanding bursts).
@@ -266,7 +270,9 @@ the Ed25519 signature (Monocypher 4.0.2), checks the digest in constant time, th
 ID, then encoding rules (reserved flag bits, slot range, duplicate slots, owner values that
 would alias in the 4-bit hardware field). It enforces the version chain
 (`version > committed`, `prev_version == committed`) and keeps ROOT packages off the runtime
-path. It does **not** decide what the rules may contain. That decision belongs to the hardware
+path. At boot it also rejects a committed image older than a one-way anti-rollback counter (see
+section 10). If an activation times out because the bus never goes idle, it aborts, or reverts if
+the switch happened late, so the controller never stays in WAIT_IDLE holding traffic. It does **not** decide what the rules may contain. That decision belongs to the hardware
 validator, which checks independently and does not trust the firmware's view of authority.
 
 Private test keys are generated into `build/keys/` (git-ignored); only the public key table is
@@ -290,6 +296,13 @@ Trace validation (offline, before signing) and hardware authority validation (on
 at update time) are separate and independent: the first judges whether a policy is *good*,
 the second whether the requester was *allowed* to ask for it.
 
+The gate refuses a candidate if any of the following holds:
+- the hardware reference model would reject it;
+- a legitimate transaction becomes rejected;
+- a malicious transaction becomes accepted;
+- a changed or removed rule's address range is hit by no transaction of its owner in the corpus
+  (it cannot vouch for behaviour it never exercised).
+
 ## 10. Persistence and recovery
 
 `firmware/src/pstore.c` simulates flash with two package slots and two metadata copies
@@ -300,6 +313,13 @@ re-verifies the stored package's signature, and restores it through the boot win
 loss at any byte leaves the previous committed policy intact; an image that fails
 re-authentication leaves the monitor in default-deny with the boot window locked (fail-secure).
 
+Signatures prove authenticity, not freshness. The store also holds the *previous* signed package,
+so an attacker who can rewrite the metadata could point boot at it. A one-way counter
+(`version_floor`, standing in for OTP fuses or RPMB) is raised after every commit. Boot refuses
+any committed image older than it, and stays default-deny. The counter is a single-word write,
+so it cannot be torn. A power loss between the metadata commit and the raise is healed at the
+next successful boot.
+
 ## 11. Verification approach
 
 - **Reference models** in `tools/hsm_common.py` mirror the monitor and the validator.
@@ -309,11 +329,18 @@ re-authentication leaves the monitor in default-deny with the boot window locked
   `tb_mmio_replay.sv` replays the whole C test suite (≈17 700 operations, including 428
   resets from power-loss tests) into the RTL and compares every read-back.
 - **Directed RTL tests** for every listed case (see `tb/`).
-- **Mutation check** (`scripts/mutation_check.py`): 20 deliberately planted security bugs, each
-  of which must make the regression fail. Its first run found an untested corner: an overlap
-  in the last slot pair. A test for it was added.
+- **Mutation check** (`scripts/mutation_check.py`): 21 deliberately planted security bugs, each
+  of which must make the regression fail. A mutant that does not compile aborts the check rather
+  than counting as caught. Its first run found an untested corner: an overlap in the last slot
+  pair. A test for it was added.
+- **Sanitizers**: the C suite runs clean under UBSan (trap mode) locally. CI adds
+  AddressSanitizer + UBSan on Ubuntu, which has not run yet.
 
-No formal verification was performed.
+The Python, C and RTL models were written by the same developer from the same specification.
+Agreement between them catches implementation slips but not a shared misunderstanding of the
+specification; the hand-written expectations in the directed tests are the only independent
+check. Seeded mutation testing measures test sensitivity and is not formal verification. No
+formal verification was performed.
 
 ## 12. Design iteration recorded
 

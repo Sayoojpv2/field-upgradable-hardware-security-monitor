@@ -121,6 +121,12 @@ module tb_policy_update;
     load("policy_v4"); pw[1] = 5; pw[9] = 32'h0FFF_FFFF; install_pw(E_RANGE, 1, "start > end");
     load("policy_v4"); pw[1] = 5; pw[10] = 32'h8001_0300; install_pw(E_MALFORMED, 1, "max burst 0");
     load("policy_v4"); pw[1] = 5; pw[10] = 32'h8005_0310; install_pw(E_FOREIGN, 1, "rule owner 5 from DMA");
+    // Tightening its own rule is within authority: drop W, add a privilege requirement.
+    load("policy_v4"); pw[1] = 5; pw[10] = 32'h8001_0110; stage_validate(s);
+    check(st(s) == S_READY, "owner may remove its own write permission"); wr(A_CMD, {28'd0, C_ABORT});
+    load("policy_v4"); pw[1] = 5; pw[10] = 32'h8001_0710; stage_validate(s);
+    check(st(s) == S_READY, "owner may add a privilege requirement"); wr(A_CMD, {28'd0, C_ABORT});
+    load("policy_v4"); pw[1] = 5; pw[10] = 32'h8000_0310; install_pw(E_FOREIGN, 1, "DMA hands its rule to the CPU");
     // TOCTOU: changing REQ_OWNER after BEGIN must not change the authenticated requester
     load("attacks/atk_dma_foreign_modify"); stage_pw();
     wr(A_REQ_OWNER, OWNER_CPU);
@@ -133,7 +139,13 @@ module tb_policy_update;
   // Root-mode checks need an empty active bank: run right after a reset.
   task automatic t_root_checks();
     load("policy_v1"); pw[10] = 32'h8005_0340; install_pw(E_OWNER_ID, 1, "boot image with owner 5");
-    load("policy_v1"); pw[9]  = 32'h1001_0000; install_pw(E_ADDR_ESCAPE, 1, "boot image escaping envelope");
+    // policy_v1 rules sit exactly on the envelope bounds and are accepted elsewhere; one address
+    // outside either bound must be refused, for every owner.
+    load("policy_v1"); pw[9]  = 32'h1001_0000; install_pw(E_ADDR_ESCAPE, 1, "DMA end one past envelope");
+    load("policy_v1"); pw[8]  = 32'h0FFF_FFFF; install_pw(E_ADDR_ESCAPE, 1, "DMA start one below envelope");
+    load("policy_v1"); pw[5]  = 32'h0001_0000; install_pw(E_ADDR_ESCAPE, 0, "CPU end one past envelope");
+    load("policy_v1"); pw[12] = 32'h1FFF_FFFF; install_pw(E_ADDR_ESCAPE, 2, "DIAG start one below envelope");
+    load("policy_v1"); pw[13] = 32'h2001_0000; install_pw(E_ADDR_ESCAPE, 2, "DIAG end one past envelope");
     load("policy_v1"); pw[14] = 32'h8002_0704; install_pw(E_PERM_ESC, 2, "boot image DIAG write");
     load("policy_v1"); pw[14] = 32'h8002_0104; install_pw(E_PRIV_FLOOR, 2, "boot image DIAG unprivileged");
     load("policy_v1"); pw[2] = 4; pw[15] = 3; pw[16] = 32'h1000_F000; pw[17] = 32'h1000_FFFF; pw[18] = 32'h8001_0310;
@@ -220,10 +232,42 @@ module tb_policy_update;
     expect_version(4, "after safe-switch tests");
   endtask
 
+  // Interconnect that registers its outstanding-beat counter, i.e. learns about a grant one
+  // cycle after dec_valid. A burst granted in the same cycle as ACTIVATE must still finish
+  // its data phase before the bank select flips.
+  bit          reg_ic = 0;
+  int          ic_beats = 0;
+  logic [7:0]  acc_burst;
+  always @(posedge clk) if (txn_valid && txn_ready) acc_burst <= txn_burst;
+  always @(posedge clk) if (reg_ic) ic_beats <= (dec_valid && dec_allow) ? acc_burst : (ic_beats > 0 ? ic_beats - 1 : 0);
+  always @(ic_beats or reg_ic) if (reg_ic) bus_idle = (ic_beats == 0);
+
+  task automatic t_registered_interconnect();
+    logic [31:0] s;
+    int switch_cycles = 0, busy_at_switch = 0;
+    load("candidates/cand_v5_dma_reopen"); stage_validate(s);
+    reg_ic = 1;
+    txn_master = 1; txn_addr = 32'h1000_0000; txn_write = 1; txn_priv = 0; txn_burst = 8; txn_valid = 1;
+    wr(A_CMD, {28'd0, C_ACTIVATE});                 // the burst is granted on this same edge
+    txn_valid = 0;
+    check(dec_valid && dec_allow, "burst granted in the ACTIVATE cycle");
+    for (int c = 0; c < 30; c++) begin
+      rd(A_STATUS, s);
+      if (st(s) == S_SWITCH) begin switch_cycles++; if (ic_beats != 0) busy_at_switch++; end
+      tick();
+    end
+    check(switch_cycles == 1, $sformatf("exactly one SWITCH cycle (%0d)", switch_cycles));
+    check(busy_at_switch == 0, "bank select never flips while a granted burst is in its data phase");
+    rd(A_STATUS, s); check(st(s) == S_COMPLETE, "switch completes after the burst drains");
+    reg_ic = 0; bus_idle = 1;
+    wr(A_CMD, {28'd0, C_REVERT}); wait_not_busy(s);
+    expect_version(4, "after registered-interconnect test");
+  endtask
+
   task automatic t_reset_during_update();
     logic [31:0] s;
-    int stop_state [5] = '{S_RECEIVE, S_VALIDATE, S_READY, S_WAIT_IDLE, S_COMPLETE};
-    for (int k = 0; k < 5; k++) begin
+    int stop_state [6] = '{S_RECEIVE, S_VALIDATE, S_READY, S_WAIT_IDLE, S_SWITCH, S_COMPLETE};
+    for (int k = 0; k < 6; k++) begin
       chain_to_v4();
       load("candidates/cand_v5_dma_reopen");
       stage_pw();
@@ -233,6 +277,7 @@ module tb_policy_update;
         else wait_not_busy(s);
       end
       if (stop_state[k] == S_WAIT_IDLE) begin bus_idle = 0; wr(A_CMD, {28'd0, C_ACTIVATE}); tick(2); end
+      if (stop_state[k] == S_SWITCH) begin wr(A_CMD, {28'd0, C_ACTIVATE}); tick(1); end   // reset in the flip cycle
       if (stop_state[k] == S_COMPLETE) begin wr(A_CMD, {28'd0, C_ACTIVATE}); wait_not_busy(s); end
       expect_status(4'(stop_state[k]), $sformatf("reached state %0d", stop_state[k]));
       bus_idle = 1;
@@ -282,6 +327,7 @@ module tb_policy_update;
     t_structure();
     t_write_protection_and_revert();
     t_safe_switch();
+    t_registered_interconnect();
     t_reset_during_update();
     do_reset();
     t_root_checks();

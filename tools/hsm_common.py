@@ -88,13 +88,34 @@ def _owner(x) -> int:
 
 
 def load_policy(path) -> Policy:
+    """Load and type-check a policy JSON. Authority is NOT checked here (that is the validator's job)."""
     d = json.loads(Path(path).read_text())
-    rules = [Rule(int(r["slot"]), _owner(r["owner"]), _int(r["start"]), _int(r["end"]),
-                  bool(r["read"]), bool(r["write"]), bool(r["priv"]), int(r["max_burst"]))
-             for r in d["rules"]]
-    return Policy(_owner(d["requester"]), int(d["policy_version"]), int(d["prev_version"]),
-                  sorted(rules, key=lambda r: r.slot), _int(d.get("device_id", DEVICE_ID)),
-                  d.get("description", ""), Path(path).stem, d.get("meta", {}))
+
+    def need(cond, what):
+        if not cond:
+            raise ValueError(f"{path}: {what}")
+
+    def u(v, bits, what):
+        v = _int(v) if isinstance(v, str) else v
+        need(isinstance(v, int) and not isinstance(v, bool) and 0 <= v < (1 << bits), f"{what} must be a {bits}-bit unsigned integer")
+        return v
+
+    def owner(v, what):
+        need(v in OWNERS if isinstance(v, str) else (isinstance(v, int) and not isinstance(v, bool)), f"unknown {what} {v!r}")
+        return u(_owner(v), 4, what)
+
+    need(isinstance(d.get("rules"), list) and 1 <= len(d["rules"]) <= NRULES, f"rules must be a list of 1..{NRULES}")
+    rules = []
+    for r in d["rules"]:
+        for flag in ("read", "write", "priv"):
+            need(isinstance(r.get(flag), bool), f"rule {flag} must be true/false, got {r.get(flag)!r}")
+        rules.append(Rule(u(r["slot"], 3, "slot"), owner(r["owner"], "owner"), u(r["start"], 32, "start"),
+                          u(r["end"], 32, "end"), r["read"], r["write"], r["priv"], u(r["max_burst"], 8, "max_burst")))
+    need(len({r.slot for r in rules}) == len(rules), "duplicate slot")
+    return Policy(owner(d["requester"], "requester"), u(d["policy_version"], 32, "policy_version"),
+                  u(d["prev_version"], 32, "prev_version"), sorted(rules, key=lambda r: r.slot),
+                  u(d.get("device_id", DEVICE_ID), 32, "device_id"), d.get("description", ""), Path(path).stem,
+                  d.get("meta", {}))
 
 
 def policy_to_json(p: Policy) -> dict:

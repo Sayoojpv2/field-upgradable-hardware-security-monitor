@@ -19,10 +19,10 @@
 | configurable (unbounded) | 1 | 4 | 2558 | 328 | 2230 | 467 | 328 |
 | configurable (unbounded) | 1 | 6 | 3641 | 489 | 3152 | 681 | 489 |
 | configurable (unbounded) | 1 | 8 | 4721 | 649 | 4072 | 831 | 649 |
-| bounded dual-bank | 2 | 2 | 4408 | 470 | 3938 | 1183 | 470 |
-| bounded dual-bank | 2 | 4 | 6786 | 791 | 5995 | 2068 | 791 |
-| bounded dual-bank | 2 | 6 | 8963 | 1112 | 7851 | 2749 | 1112 |
-| bounded dual-bank | 2 | 8 | 11606 | 1432 | 10174 | 3514 | 1432 |
+| bounded dual-bank | 2 | 2 | 4403 | 470 | 3933 | 1183 | 470 |
+| bounded dual-bank | 2 | 4 | 6787 | 791 | 5996 | 2014 | 791 |
+| bounded dual-bank | 2 | 6 | 8950 | 1112 | 7838 | 2769 | 1112 |
+| bounded dual-bank | 2 | 8 | 11614 | 1432 | 10182 | 3516 | 1432 |
 
 ## Bounded design per module (NRULES=8, hierarchy kept)
 | module | gate_cells | flip_flops |
@@ -31,7 +31,7 @@
 | bus_security_monitor | 3496 | 9 |
 | policy_update_controller | 635 | 122 |
 | policy_validator | 4775 | 22 |
-| security_monitor_top | 0 | 0 |
+| security_monitor_top | 2 | 0 |
 
 ## Same 477-transaction trace on each design
 | design | policy | benign_accepted | benign_rejected | malicious_accepted | malicious_rejected |
@@ -100,4 +100,4 @@
 
 Torn-write sweep: 205/205 interrupted installs restored the committed policy.
 
-RTL regression: 11/11 testbench runs, 7891 checks.
+RTL regression: 11/11 testbench runs, 7982 checks.

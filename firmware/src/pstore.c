@@ -19,6 +19,12 @@ void pstore_init_blank(pstore_t *ps)
     ps->power_loss = NULL;
     ps->fail_commit = 0;
     ps->bytes_programmed = 0;
+    ps->version_floor = 0;
+}
+
+void pstore_raise_floor(pstore_t *ps, uint32_t version)
+{
+    if (version > ps->version_floor) ps->version_floor = version;
 }
 
 /* Program bytes one at a time so a simulated power loss can tear any write. */

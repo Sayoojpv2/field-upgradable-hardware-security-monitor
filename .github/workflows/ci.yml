@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: Icarus/GCC versions differ between images
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +23,11 @@ jobs:
           iverilog -V 2>&1 | head -1
           gcc --version | head -1
           python3 --version
+
+      - name: C tests under AddressSanitizer + UndefinedBehaviorSanitizer
+        run: |
+          make test-c PYTHON=python3 CFLAGS="-std=c99 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all"
+          rm -f build/fw/test_firmware   # rebuild without sanitizers below
 
       - name: Python, C, RTL tests and mutation check
         run: make test PYTHON=python3

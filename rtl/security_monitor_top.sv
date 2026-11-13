@@ -23,7 +23,7 @@ module security_monitor_top #(
     input  logic        txn_write,
     input  logic        txn_priv,
     input  logic [7:0]  txn_burst,
-    input  logic        bus_idle,
+    input  logic        bus_idle,     // no granted burst in its data phase; may lag a grant by <= 1 cycle
     output logic        dec_valid,
     output logic        dec_allow,
     output logic        dec_violation,
@@ -37,6 +37,10 @@ module security_monitor_top #(
     output logic [31:0] reg_rdata
 );
 `include "hsm_defs.svh"
+
+`ifndef SYNTHESIS
+  initial if (NRULES < 2 || NRULES > 8) $fatal(1, "security_monitor_top: NRULES must be 2..8");
+`endif
 
   logic [NRULES*80-1:0] act_rules;
   logic                 hold;
@@ -83,7 +87,9 @@ module security_monitor_top #(
 
       policy_update_controller #(.NRULES(NRULES)) u_ctrl (
         .clk(clk), .rst_n(rst_n), .reg_we(reg_we), .reg_addr(reg_addr), .reg_wdata(reg_wdata),
-        .reg_rdata(reg_rdata), .bus_idle(bus_idle), .hold(hold), .active_sel(sel),
+        // A burst granted this cycle is not yet visible in a registered interconnect's bus_idle:
+        // never treat the bus as idle in the grant cycle, or the bank could flip mid-burst.
+        .reg_rdata(reg_rdata), .bus_idle(bus_idle && !(dec_valid && dec_allow)), .hold(hold), .active_sel(sel),
         .bank_swap(swap), .bank_clear(clr), .bank_we(bwe), .bank_widx(widx), .bank_wfield(wfield),
         .bank_wdata(wdata), .val_start(vstart), .val_req_owner(vreq), .val_root(vroot),
         .val_cand_version(vcand), .val_active_version(vact), .val_count(vcount),

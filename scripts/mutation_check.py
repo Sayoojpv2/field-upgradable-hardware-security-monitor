@@ -60,7 +60,13 @@ MUTANTS = [
      "active_version <= prev_version;", "active_version <= active_version;"),
     ("reserved ATTR bits accepted", "policy_update_controller.sv",
      "(rfield == 2'd2 && (reg_wdata & ATTR_RSVD_MASK) != 32'd0)", "1'b0"),
+    ("switch trusts bus_idle in the grant cycle", "security_monitor_top.sv",
+     ".bus_idle(bus_idle && !(dec_valid && dec_allow))", ".bus_idle(bus_idle)"),
 ]
+
+
+class CompileError(Exception):
+    pass
 
 RUNS = [
     ("tb_policy_update", {}, ["+vdir=build/vectors"]),
@@ -79,8 +85,8 @@ def regression_fails(rtl_dir: Path) -> str | None:
         cmd = [IVERILOG, "-g2012", f"-I{rtl_dir.relative_to(ROOT).as_posix()}", "-Itb", "-s", tb, "-o", str(out.relative_to(ROOT))]
         cmd += [f"-P{tb}.{k}={v}" for k, v in params.items()] + srcs + [f"tb/{tb}.sv"]
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
-        if r.returncode:
-            return f"{tb} (compile error)"
+        if r.returncode:   # a mutant that does not compile proves nothing about the tests
+            raise CompileError(f"{tb}: {(r.stdout + r.stderr)[-500:]}")
         r = subprocess.run([VVP, "-n", str(out.relative_to(ROOT)), *args], cwd=ROOT, capture_output=True, text=True)
         if not re.search(r"TB_RESULT .* PASS", r.stdout):
             return f"{tb} {params} {' '.join(args)[:40]}"
@@ -90,7 +96,7 @@ def regression_fails(rtl_dir: Path) -> str | None:
 def main():
     WORK.mkdir(parents=True, exist_ok=True)
     mdir = WORK / "rtl"
-    if regression_fails(ROOT / "rtl"):
+    if regression_fails(ROOT / "rtl"):   # baseline must pass, or every mutant would look "killed"
         sys.exit("unmodified RTL fails the regression; fix that first")
     killed = 0
     for desc, fname, old, new in MUTANTS:
@@ -100,7 +106,10 @@ def main():
         if src.count(old) != 1:
             sys.exit(f"mutation anchor not found exactly once: {fname}: {old}")
         (mdir / fname).write_text(src.replace(old, new))
-        caught = regression_fails(mdir)
+        try:
+            caught = regression_fails(mdir)
+        except CompileError as e:
+            sys.exit(f"INVALID mutant (does not compile): {desc}\n{e}")
         killed += caught is not None
         print(f"{'KILLED ' if caught else 'SURVIVED'} {desc:56} {caught or ''}")
     print(f"MUTATION_RESULT killed={killed}/{len(MUTANTS)}")

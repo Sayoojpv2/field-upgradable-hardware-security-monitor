@@ -26,3 +26,22 @@
 - Yosys sweep (3 designs × 2/4/6/8 rules), comparative experiments, plots, docs, CI workflow.
 - Not done: cross-compiled firmware size (the RISC-V newlib headers are not unpacked locally),
   timing or power analysis, CI execution on GitHub (nothing pushed).
+
+## 2026-11-13 — milestone 3: independent audit and hardening
+
+Issues found and fixed (each with a regression test that fails without the fix):
+
+| Pri | Where | Problem | Fix |
+|---|---|---|---|
+| P1 | `rtl/security_monitor_top.sv` | With an interconnect that registers its busy state, a burst granted in the ACTIVATE cycle let the bank flip mid-burst | `bus_idle` ignored in the grant cycle; RTL test with a registered interconnect; mutant added |
+| P1 | `firmware/src/policy_manager.c`, `pstore.c` | Boot re-checked signatures but not freshness: rewriting the metadata restored an older signed policy | One-way anti-rollback counter (models OTP/RPMB), checked at boot |
+| P2 | `firmware/src/policy_manager.c` | Activation timeout left the controller in WAIT_IDLE, holding all bus traffic | ABORT (or REVERT if the switch slipped in late) on timeout |
+| P2 | `scripts/mutation_check.py` | A mutant that failed to compile counted as caught | Compile failure now aborts the check |
+| P2 | `tools/hsm_common.py` | `"false"` in policy JSON became `True` (permission silently granted); no range checks | Strict types and ranges |
+| P2 | `tools/trace_validator.py` | Gate could pass changes no trace exercised | Uncovered changed rules refuse the candidate |
+| P2 | `Makefile` demo | an `echo` fallback after each gate call also hid crashes | `--expect recommend/reject`, self-checking |
+| P3 | RTL, TB, C, repo | NRULES range unchecked; static-lifetime TB warning; `logf` shadowed libc; line endings | Sim-time guard, TB fix, rename, `.gitattributes`; raw logs untracked |
+
+Also added: envelope ±1 boundary tests for every owner, in-authority permission changes, reset in
+SWITCH, owner-relabel test, CI pinned to ubuntu-24.04 with an ASan/UBSan step. Verified unchanged:
+all security, latency and recovery results. Bounded design at 8 rules: 11 606 → 11 614 cells.

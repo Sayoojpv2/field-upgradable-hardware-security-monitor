@@ -38,7 +38,7 @@ behaviour once all three weaknesses are known. The identical corpus is used for 
 | Hold cycles | Cycles with `txn_ready` low during each update | `transient.csv`, `latency.csv` |
 | Resources | Yosys 0.70 `synth -flatten` generic cells and flip-flops; `synth -flatten -lut 6` generic 6-input LUTs; `check -assert`; latches rejected | `synth.csv`, `synth_modules.csv` |
 | Recovery | C fault-injection tests: 7 fault points + torn-write sweep over every byte of the store writes | `fault_injection.json` |
-| Release gate | `trace_validator.compare` on every example policy and candidate | `trace_validation.csv` |
+| Release gate | `trace_validator.compare` on every example policy and candidate. A candidate is refused if the hardware model rejects it, a legitimate transaction becomes rejected, a malicious one becomes accepted, or a changed rule is exercised by no trace | `trace_validation.csv` |
 
 ## Caveats
 
@@ -52,4 +52,6 @@ behaviour once all three weaknesses are known. The identical corpus is used for 
   software checks, so its "malicious update" numbers show what hardware enforcement adds. They
   do not describe any specific commercial part.
 - The traces are synthetic and the labels come from the scenario definitions; they measure
-  consistency with an intended policy, not real-world detection rates.
+  consistency with an intended policy, not real-world detection rates or zero-day detection.
+- Per-decision logs (`results/raw/`) are regenerated deterministically and not committed. A run
+  from a clean copy reproduced every committed CSV value.

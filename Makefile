@@ -87,12 +87,12 @@ $(CORPUS): tools/trace_validator.py tools/hsm_common.py .venv/.installed
 
 GATE = $(PY) tools/trace_validator.py compare --trace $(CORPUS)
 demo: $(DEMOBIN) $(PKGS) $(CORPUS)
-	@echo "== [A] Offline release gate: trace validation before signing (exit 1 = not recommended)"
-	$(GATE) --baseline examples/policy_v1.json --candidate examples/policy_v2.json --report build/reports/policy_v2.md
-	$(GATE) --baseline examples/policy_v2.json --candidate examples/policy_v3.json --report build/reports/policy_v3.md
-	$(GATE) --baseline examples/policy_v3.json --candidate examples/policy_v4.json --report build/reports/policy_v4.md
-	$(GATE) --baseline examples/policy_v1.json --candidate examples/candidates/cand_v2_overbroad.json --report build/reports/cand_v2_overbroad.md || echo ">> gate refused cand_v2_overbroad (expected)"
-	$(GATE) --baseline examples/policy_v4.json --candidate examples/candidates/cand_v5_dma_reopen.json --report build/reports/cand_v5_dma_reopen.md || echo ">> gate refused cand_v5_dma_reopen (expected)"
+	@echo "== [A] Offline release gate: trace validation before signing (each verdict is checked)"
+	$(GATE) --expect recommend --baseline examples/policy_v1.json --candidate examples/policy_v2.json --report build/reports/policy_v2.md
+	$(GATE) --expect recommend --baseline examples/policy_v2.json --candidate examples/policy_v3.json --report build/reports/policy_v3.md
+	$(GATE) --expect recommend --baseline examples/policy_v3.json --candidate examples/policy_v4.json --report build/reports/policy_v4.md
+	$(GATE) --expect reject --baseline examples/policy_v1.json --candidate examples/candidates/cand_v2_overbroad.json --report build/reports/cand_v2_overbroad.md
+	$(GATE) --expect reject --baseline examples/policy_v4.json --candidate examples/candidates/cand_v5_dma_reopen.json --report build/reports/cand_v5_dma_reopen.md
 	@echo "== [B] Device: firmware + host hardware model"
 	$(DEMOBIN) build/pkgs build/fw/mmio_demo.log
 	@echo "== [C] The same register traffic replayed into the RTL"
@@ -103,7 +103,7 @@ experiments: sim-rtl synth
 
 # ---------------------------------------------------------------- housekeeping
 clean:
-	$(PYTHON) -c "import shutil; shutil.rmtree('build', ignore_errors=True)"
+	$(PYTHON) -c "import shutil; [shutil.rmtree(d, ignore_errors=True) for d in ('build', '.pytest_cache')]"
 
 distclean: clean
 	$(PYTHON) -c "import shutil; shutil.rmtree('.venv', ignore_errors=True)"

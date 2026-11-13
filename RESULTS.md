@@ -2,20 +2,22 @@
 
 Every number below comes from a run in this repository: an RTL simulation (Icarus Verilog 13.0),
 a Yosys 0.70 run, the firmware test binary (GCC 16.2), or the generated packages. Regenerate them
-with `make test` and `make experiments`. Raw data: `results/*.csv`, `results/summary.json`,
-`results/raw/`. Method and caveats: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
+with `make test` and `make experiments`. Data: `results/*.csv`, `results/summary.json`; per-decision
+logs are regenerated in `results/raw/` by `make experiments` and are not committed. Method and caveats: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
 These are simulation and generic-synthesis results, not FPGA, ASIC or hardware measurements.
 
 ## 1. Test results
 
 | Suite | Result |
 |---|---|
-| Python (`pytest`, tools + cross-language constant/authority-table checks) | 26 passed |
-| C firmware (`test_firmware`) | 1 213 checks, 0 failures |
-| RTL regression (`run_rtl.py`) | 11/11 testbench runs, 7 891 checks, 0 errors |
-| Firmware → RTL MMIO replay (C test suite) | 17 720 operations, 2 971 read-backs identical, 428 resets |
+| Python (`pytest`, tools + cross-language constant/authority-table checks) | 29 passed |
+| C firmware (`test_firmware`) | 1 239 checks, 0 failures |
+| C firmware under UBSan (`-fsanitize=undefined -fsanitize-trap=all`, local) | 1 239 checks, no trap |
+| C firmware under ASan + UBSan | configured in CI only; not run (MinGW has no ASan runtime) |
+| RTL regression (`run_rtl.py`) | 11/11 testbench runs, 7 982 checks, 0 errors |
+| Firmware → RTL MMIO replay (C test suite) | 17 852 operations, 2 993 read-backs identical, 431 resets |
 | Firmware → RTL MMIO replay (demo) | 381 operations, identical |
-| Mutation check (planted RTL security bugs) | 20/20 caught |
+| Mutation check (planted RTL security bugs, every mutant must compile) | 21/21 caught |
 | Package fuzzing (3 000 random corruptions of a signed package) | 0 accepted |
 | Truncation (every length shorter than a valid package) | all rejected as `TRUNCATED` |
 | Yosys `check -assert`, latch scan | clean, 0 latches in all 24 configurations |
@@ -107,7 +109,7 @@ update logic: 1 cycle in all three designs.
 |---|---:|---:|---:|---:|
 | Static | 2 / 4 / 6 / 8 | 231 / 269 / 284 / 330 | 7 / 8 / 9 / 9 | 34 / 48 / 54 / 61 |
 | Configurable (unbounded) | 2 / 4 / 6 / 8 | 1 485 / 2 558 / 3 641 / 4 721 | 167 / 328 / 489 / 649 | 303 / 467 / 681 / 831 |
-| Bounded dual-bank | 2 / 4 / 6 / 8 | 4 408 / 6 786 / 8 963 / 11 606 | 470 / 791 / 1 112 / 1 432 | 1 183 / 2 068 / 2 749 / 3 514 |
+| Bounded dual-bank | 2 / 4 / 6 / 8 | 4 403 / 6 787 / 8 950 / 11 614 | 470 / 791 / 1 112 / 1 432 | 1 183 / 2 014 / 2 769 / 3 516 |
 
 Per module, bounded design, 8 rules (hierarchy kept):
 
@@ -117,6 +119,7 @@ Per module, bounded design, 8 rules (hierarchy kept):
 | bus_security_monitor | 3 496 | 9 |
 | policy_update_controller | 635 | 122 |
 | policy_validator | 4 775 | 22 |
+| security_monitor_top (grant-cycle bus_idle gate) | 2 | 0 |
 
 At 8 rules the bounded design costs 2.5× the cells and 2.2× the flip-flops of the unbounded
 configurable monitor. The second bank (640 FFs) and the validator's three 80-bit read ports
@@ -144,8 +147,15 @@ power, so they are not comparable with the FPGA LUT figures in the referenced pr
   (version 4 active again).
 - **Corrupted committed image**: rejected at boot (`DIGEST`). The monitor stays default-deny with
   the boot window locked.
-- **Reset in each update state** (RECEIVE, VALIDATE, READY, WAIT_IDLE, COMPLETE), RTL: no partial
-  rule ever active, and the committed image restored afterwards.
+- **Reset in each update state** (RECEIVE, VALIDATE, READY, WAIT_IDLE, SWITCH, COMPLETE), RTL: no
+  partial rule ever active, and the committed image restored afterwards.
+- **Storage rollback** (metadata rewritten with a valid CRC to point at the older, still signed v2):
+  refused at boot by the anti-rollback counter; the monitor stays default-deny. Without the counter,
+  the same test restores v2.
+- **Activation timeout** (bus never idle): the firmware aborts, the controller leaves WAIT_IDLE so
+  traffic flows again, the old policy stays active, and a retry succeeds.
+- **Registered interconnect** (bus_idle lags a grant by one cycle), RTL: the bank never flips while
+  the burst granted in the ACTIVATE cycle is still transferring. Before the audit fix it did.
 
 ## 7. Design iteration
 

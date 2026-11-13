@@ -22,9 +22,10 @@ trusted policy manager). This is an academic architecture study, not a certified
 | C policy manager | yes | Verifies signatures correctly and reports the authenticated requester truthfully to the hardware. This is the largest assumption: a compromised manager could claim any requester, but it still cannot install a rule outside the envelope of the owner it names, or modify another owner's rules without naming that owner |
 | Owner signing keys | each key is trusted **only for its own owner** | A key may be stolen or its holder may be careless or malicious: the design must contain the damage to that owner's envelope |
 | Policy package in transit / in storage | no | Any byte may be modified, truncated or replayed |
-| Persistent store | no (integrity) | May be torn by power loss or corrupted; contents are re-authenticated at boot |
+| Persistent store | no (integrity, freshness) | May be torn by power loss, corrupted, or rewritten to point at an older, still correctly signed package; contents are re-authenticated at boot and checked against the anti-rollback counter |
+| Anti-rollback counter (`version_floor`) | yes | Models a one-way counter in OTP fuses or RPMB that only the policy manager can raise and that an attacker who can rewrite the store cannot lower. In this project it is a field of the simulated store, so the protection is a *modelled* property |
 | Bus masters | no | May issue any transaction, including unknown master IDs, oversized bursts, wrap-around bursts |
-| Interconnect `bus_idle` signal | yes | Truthfully reports outstanding data-phase activity |
+| Interconnect `bus_idle` signal | yes | Truthfully reports outstanding data-phase activity, and drops no later than one cycle after the monitor grants a burst (the top level ignores `bus_idle` in the grant cycle itself) |
 | Offline release tooling and human reviewer | yes, but fallible | The trace gate reduces, not eliminates, the risk of a bad but authorised policy |
 
 ## Attacker capabilities considered
@@ -39,6 +40,8 @@ trusted policy manager). This is an academic architecture study, not a certified
 - **A4 – Update timing**: issues traffic during an update hoping to hit a half-applied policy;
   tries to change the requester after `BEGIN` or modify the candidate after validation.
 - **A5 – Power loss / reset** at any point of an update, including mid-write of the store.
+- **A6 – Storage rollback**: rewrites the store's metadata (with a valid CRC) so that boot restores
+  an older package that is still correctly signed.
 
 ## Attacks addressed (and where)
 
@@ -53,8 +56,9 @@ trusted policy manager). This is an academic architecture study, not a certified
 | A1 change immutable boundaries | no write path to the authority table; unassigned space can never be covered | RTL structure; envelope tests |
 | A2 tampering, wrong key, wrong device, truncation | Ed25519 over header + BLAKE2b digest of payload; length checks first | C tests incl. 3 000-mutation fuzz and every truncation length |
 | A2 replay / downgrade | firmware version chain + hardware `VERSION` check | C and RTL tests |
+| A6 storage rollback to an older signed image | one-way anti-rollback counter checked at boot; fail-secure default deny | C test `test_storage_rollback` (fails without the counter) |
 | A3 out-of-policy transactions | default-deny monitor with burst-span and wrap checks | 477-transaction corpus, directed tests |
-| A4 half-applied policy | writes only to the inactive bank, one-bit switch at a held, idle boundary | update-under-traffic experiment: 0 inconsistent decisions |
+| A4 half-applied policy | writes only to the inactive bank, one-bit switch at a held, idle boundary; the grant cycle never counts as idle | update-under-traffic experiment: 0 inconsistent decisions; registered-interconnect RTL test |
 | A4 TOCTOU on requester / candidate | configuration frozen after `BEGIN`; rule writes ignored after `VALIDATE` | RTL tests |
 | A5 interruption | A/B store, metadata copies with CRC, re-authentication at boot, revert before confirm | 7 fault points + 205-byte torn-write sweep |
 
@@ -66,10 +70,13 @@ trusted policy manager). This is an academic architecture study, not a certified
 - A **compromised policy manager** that lies about the requester, or a stolen ROOT key used
   during the boot window.
 - Physical attacks: fault injection on the RTL itself, side channels, probing, glitching.
-- Denial of service by an owner that never lets the bus go idle (the switch waits; firmware can
-  abort), or by repeatedly submitting invalid updates.
+- Denial of service by an owner that never lets the bus go idle. The switch waits and the
+  firmware aborts after a timeout, releasing held traffic, but the update does not happen. A
+  `REVERT` cannot be aborted. Repeated invalid updates are also not rate-limited.
 - Attacks the monitor cannot see: data contents, timing channels, cache or speculative effects,
   confused-deputy use of a legitimate master.
 - Key management: rotation, revocation and secure storage of the signing keys.
 - The synthetic vulnerability scenarios are controlled examples. They are **not** real CVEs,
-  and nothing here discovers vulnerabilities.
+  and nothing here discovers vulnerabilities. The trace gate only judges behaviour on the traces
+  it has. It refuses a candidate whose changed rules no trace exercises, but it cannot show that
+  a policy blocks unknown (zero-day) attacks.

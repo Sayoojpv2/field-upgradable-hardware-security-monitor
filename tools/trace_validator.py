@@ -4,7 +4,9 @@
   gen        --out build/traces/corpus.csv            deterministic benign/malicious/boundary corpus
   replay     --policy P.json --trace T.csv [--explain] confusion matrix for one policy
   compare    --baseline A.json --candidate B.json --trace T.csv [--report R.md] [--json R.json]
-             exit 0 = recommended for signing, 1 = not recommended
+             [--expect recommend|reject]
+             exit 0 = recommended for signing, 1 = not recommended; with --expect, exit 0 only
+             if the verdict matches (a crash still exits non-zero)
   export-rtl --policy P.json --trace T.csv --out V.hex expected decisions for the RTL testbench
 
 Labels are the security intent once all three synthetic weaknesses are known: `benign`
@@ -165,6 +167,11 @@ def compare(base, cand, trace):
         diff[key].append((i, explain(t, *c)))
     remaining = [(i, t["scenario"], explain(t, *c)) for i, (t, c) in enumerate(zip(trace, dc))
                  if t["label"] == "malicious" and c[0]]
+    # A change no trace exercises cannot be judged by replay: refuse rather than vouch for it.
+    old_by, new_by = {r.slot: r for r in base.rules}, {r.slot: r for r in cand.rules}
+    changed = [r for r in cand.rules if old_by.get(r.slot) != r] + [r for r in base.rules if new_by.get(r.slot) != r]
+    uncovered = [r.describe() for r in changed
+                 if not any(t["master"] == r.owner and r.start <= t["addr"] <= r.end for t in trace)]
     hw_err, hw_slot = validate_update(cand, base.rules, base.version, boot_window=False)
     reasons = []
     if hw_err:
@@ -173,10 +180,12 @@ def compare(base, cand, trace):
         reasons.append(f"{len(diff['regressions_benign'])} legitimate transaction(s) newly rejected")
     if diff["regressions_malicious"]:
         reasons.append(f"{len(diff['regressions_malicious'])} malicious transaction(s) newly accepted")
+    if uncovered:
+        reasons.append(f"{len(uncovered)} changed rule(s) not exercised by any trace: " + "; ".join(uncovered))
     return dict(baseline=dict(name=base.name, version=base.version, **sb),
                 candidate=dict(name=cand.name, version=cand.version, requester=OWNER_NAME[cand.requester], **sc),
                 hardware_check=E_NAME[hw_err] if hw_err else "PASS", hardware_err_slot=hw_slot if hw_err else None,
-                diff=diff, remaining_undetected=remaining,
+                diff=diff, remaining_undetected=remaining, uncovered_changes=uncovered,
                 recommended=not reasons, reasons=reasons)
 
 
@@ -224,6 +233,7 @@ def main(argv=None):
     r.add_argument("--explain", action="store_true")
     c = sub.add_parser("compare"); c.add_argument("--baseline", required=True); c.add_argument("--candidate", required=True)
     c.add_argument("--trace", required=True); c.add_argument("--report"); c.add_argument("--json")
+    c.add_argument("--expect", choices=["recommend", "reject"])
     x = sub.add_parser("export-rtl"); x.add_argument("--policy", required=True); x.add_argument("--trace", required=True)
     x.add_argument("--out", required=True)
     a = ap.parse_args(argv)
@@ -248,6 +258,8 @@ def main(argv=None):
         if a.json:
             Path(a.json).parent.mkdir(parents=True, exist_ok=True); Path(a.json).write_text(json.dumps(res, indent=2))
         print(md.split("\n## ")[0])
+        if a.expect:
+            return 0 if res["recommended"] == (a.expect == "recommend") else 1
         return 0 if res["recommended"] else 1
     else:
         export_rtl(load_policy(a.policy), read_trace(a.trace), a.out)

@@ -7,3 +7,5 @@ __pycache__/
 .pytest_cache/
 *.vcd
 *.key
+# regenerated deterministically by `make experiments`
+results/raw/

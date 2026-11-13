@@ -14,8 +14,9 @@ module tb_mmio_replay;
 
   initial begin
     string lf;
-    int fd, r, n = 0, nw = 0, nr = 0, np = 0, nx = 0, polls, maxpoll = 0, mism = 0;
+    int fd, r, n, nw, nr, np, nx, polls, maxpoll, mism;
     logic [31:0] op, a, d, m, got;
+    n = 0; nw = 0; nr = 0; np = 0; nx = 0; maxpoll = 0; mism = 0;
     do_reset();
     if (!$value$plusargs("log=%s", lf)) lf = "build/fw/mmio_tests.log";
     fd = $fopen(lf, "r");

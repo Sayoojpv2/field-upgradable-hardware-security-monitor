@@ -32,6 +32,9 @@ static blob_t load(const char *name)
     return x;
 }
 
+static FILE *cur_log;
+static FILE *hal_host_set_log_tmp(FILE *f) { FILE *o = cur_log; hal_host_set_log(f); return o; }
+
 static pstore_t store;
 static pm_t pm;
 static jmp_buf power_jmp;
@@ -114,6 +117,12 @@ static void test_packages(void)
     blob_t x = load("policy_v2"), y;
     y = x; y.b[0] ^= 0xFF;                  CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_MAGIC);
     y = x; y.b[16] ^= 0x01;                 CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_SIGNATURE); /* version */
+    /* Owner relabel: a valid DMA-signed package presented as CPU or DIAG must fail, because the
+     * requester byte is signed and selects the verifying key from device configuration. */
+    CHECK_EQ(x.b[12], 1);
+    y = x; y.b[12] = 0;                     CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_SIGNATURE);
+    y = x; y.b[12] = 2;                     CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_SIGNATURE);
+    y = x; y.b[12] = HSM_OWNER_ROOT;        CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_SIGNATURE);
     y = x; y.b[70] ^= 0x01;                 CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_SIGNATURE); /* signature */
     y = x; y.b[PKG_HDR_SIZE + 4] ^= 0x01;   CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_DIGEST);    /* payload */
     y = x; y.n += 1;                        CHECK_EQ(pkg_parse_verify(y.b, y.n, &p), PKG_ERR_LENGTH);
@@ -264,6 +273,50 @@ static void test_store_corruption(void)
     CHECK_EQ(install("policy_v2"), PM_ERR_NO_POLICY);
 }
 
+/* Storage rollback: an attacker who can write the store re-points the metadata at the older,
+ * still correctly signed image. Signature checks alone would restore it; the counter must not. */
+static void test_storage_rollback(void)
+{
+    fresh_device();
+    CHECK_EQ(install("policy_v2"), PM_OK);
+    CHECK_EQ(install("policy_v3"), PM_OK);
+    CHECK_EQ(store.version_floor, 3);
+    ps_meta_t m, f;
+    policy_t p;
+    CHECK_EQ(pstore_committed(&store, &m), 0);
+    f = m;
+    f.slot = m.slot ^ 1u;                          /* the other slot still holds signed v2 */
+    f.version = 2;
+    f.len = (uint32_t)load("policy_v2").n;
+    f.seq = m.seq + 1u;
+    f.crc = pstore_crc32((const uint8_t *)&f, 5 * sizeof(uint32_t));
+    store.meta[0] = store.meta[1] = f;
+    CHECK_EQ(pkg_parse_verify(store.slot[f.slot], f.len, &p), PKG_OK);   /* the forged target is authentic */
+    hal_host_reset();
+    CHECK_EQ(pm_boot(&pm), PM_ERR_VERSION);
+    CHECK_EQ(pm_active_version(), 0);                                    /* fail-secure, not v2 */
+    CHECK((hal_read32(HSM_REG_STATUS) & HSM_ST_BOOT_WINDOW) == 0);
+}
+
+/* Bus never idle during ACTIVATE: the firmware must not leave the controller holding traffic. */
+static void test_activation_timeout(void)
+{
+    fresh_device();
+    CHECK_EQ(install("policy_v2"), PM_OK);
+    FILE *log = hal_host_set_log_tmp(NULL);       /* the RTL replay bench always has an idle bus */
+    hal_host_set_bus_idle(0);
+    CHECK_EQ(install("policy_v3"), PM_ERR_HW_STATE);
+    uint32_t st = hal_read32(HSM_REG_STATUS);
+    CHECK_EQ(HSM_ST_STATE(st), HSM_S_IDLE);        /* WAIT_IDLE released: transactions flow again */
+    CHECK((st & HSM_ST_BUSY) == 0);
+    CHECK_EQ(pm_active_version(), 2);
+    CHECK_EQ(committed_version(), 2);
+    hal_host_set_bus_idle(1);
+    hal_host_set_log(log);
+    CHECK_EQ(install("policy_v3"), PM_OK);        /* the update can simply be retried */
+    CHECK_EQ(pm_active_version(), 3);
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) { fprintf(stderr, "usage: %s <pkg_dir> [mmio_log] [fault_json]\n", argv[0]); return 2; }
@@ -280,6 +333,8 @@ int main(int argc, char **argv)
     hal_host_log_marker(2); test_fault_points();
     hal_host_log_marker(3); test_torn_writes(&torn_runs, &torn_ok);
     hal_host_log_marker(4); test_store_corruption();
+    hal_host_log_marker(5); test_storage_rollback();
+    hal_host_log_marker(6); test_activation_timeout();
     if (fault_json) {
         fprintf(fault_json, "],\"torn_write_runs\":%d,\"torn_write_recovered\":%d}\n", torn_runs, torn_ok);
         fclose(fault_json);

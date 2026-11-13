@@ -11,7 +11,8 @@ typedef enum {
     PM_OK = 0,
     PM_ERR_PACKAGE,        /* parse / authentication failed, see last_pkg_err */
     PM_ERR_AUTHORITY,      /* ROOT packages only via pm_provision; owner packages only via pm_install */
-    PM_ERR_VERSION,        /* not newer than the committed version, or wrong predecessor */
+    PM_ERR_VERSION,        /* not newer than the committed version, wrong predecessor, or (at boot)
+                              older than the anti-rollback counter */
     PM_ERR_HW_REJECT,      /* hardware validator rejected the candidate, see last_hw_err/slot */
     PM_ERR_HW_STATE,       /* hardware not in the expected state / timeout */
     PM_ERR_STORE,          /* persistent store write failed (update reverted) */

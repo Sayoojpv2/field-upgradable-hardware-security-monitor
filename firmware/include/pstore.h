@@ -23,6 +23,8 @@ typedef struct {
     long      fault_after_bytes;          /* test hook: -1 off; else power loss after N more bytes */
     void    (*power_loss)(void);          /* test hook: must not return (longjmp) */
     int       fail_commit;                /* test hook: metadata commit reports a write error */
+    uint32_t  version_floor;              /* one-way anti-rollback counter: models OTP fuses / RPMB,
+                                             so it is NOT reachable by whoever can rewrite the store */
     uint32_t  bytes_programmed;
 } pstore_t;
 
@@ -32,5 +34,7 @@ int  pstore_commit(pstore_t *ps, uint32_t slot, uint32_t version, uint32_t len);
 /* Latest valid metadata copy; returns 0 if one exists, -1 if the store holds no committed policy. */
 int  pstore_committed(const pstore_t *ps, ps_meta_t *out);
 uint32_t pstore_crc32(const uint8_t *p, size_t n);
+/* Monotonic: never lowers the floor. A single-word write, so it cannot be torn. */
+void pstore_raise_floor(pstore_t *ps, uint32_t version);
 
 #endif

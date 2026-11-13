@@ -241,9 +241,9 @@
       "lut6": "831"
     },
     "bounded dual-bank": {
-      "gate_cells": "11606",
+      "gate_cells": "11614",
       "flip_flops": "1432",
-      "lut6": "3514"
+      "lut6": "3516"
     }
   },
   "fault_injection": {

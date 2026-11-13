@@ -60,7 +60,17 @@ static pm_status_t hw_activate(pm_t *pm)
     uint32_t st;
     hal_write32(HSM_REG_CMD, HSM_C_ACTIVATE);
     fault_point(pm, PM_FP_SWITCH_REQUESTED);
-    if (wait_not_busy(&st) != 0 || HSM_ST_STATE(st) != HSM_S_COMPLETE) return PM_ERR_HW_STATE;
+    if (wait_not_busy(&st) != 0) {
+        /* Bus never went idle: WAIT_IDLE holds all new transactions, so give up the switch.
+         * If the switch slipped in after the timeout, ABORT is ignored and we revert instead. */
+        hal_write32(HSM_REG_CMD, HSM_C_ABORT);
+        if (wait_not_busy(&st) == 0 && HSM_ST_STATE(st) == HSM_S_COMPLETE) {
+            hal_write32(HSM_REG_CMD, HSM_C_REVERT);
+            (void)wait_not_busy(&st);
+        }
+        return PM_ERR_HW_STATE;
+    }
+    if (HSM_ST_STATE(st) != HSM_S_COMPLETE) return PM_ERR_HW_STATE;
     return PM_OK;
 }
 
@@ -70,8 +80,10 @@ pm_status_t pm_provision(pm_t *pm, const uint8_t *pkg, size_t len)
     pm->last_pkg_err = pkg_parse_verify(pkg, len, &p);
     if (pm->last_pkg_err != PKG_OK) return PM_ERR_PACKAGE;
     if (p.requester != HSM_OWNER_ROOT) return PM_ERR_AUTHORITY;
+    if (p.version == 0) return PM_ERR_VERSION;      /* the hardware requires version > 0 at boot */
     if (pstore_write_slot(pm->store, 0, pkg, len) != 0 || pstore_commit(pm->store, 0, p.version, (uint32_t)len) != 0)
         return PM_ERR_STORE;
+    pstore_raise_floor(pm->store, p.version);
     return PM_OK;
 }
 
@@ -83,10 +95,16 @@ pm_status_t pm_boot(pm_t *pm)
     if (pstore_committed(pm->store, &m) == 0) {
         /* Re-authenticate: the store is outside the trust boundary of the monitor. */
         pm->last_pkg_err = pkg_parse_verify(pm->store->slot[m.slot], m.len, &p);
-        if (pm->last_pkg_err == PKG_OK && p.version == m.version) {
+        /* Authentic is not enough: an older signed image still in the store must not come back. */
+        if (pm->last_pkg_err == PKG_OK && p.version == m.version && m.version < pm->store->version_floor)
+            s = PM_ERR_VERSION;
+        else if (pm->last_pkg_err == PKG_OK && p.version == m.version) {
             s = hw_stage(pm, &p, HSM_OWNER_ROOT);     /* boot window: whole image, envelopes still checked */
             if (s == PM_OK) s = hw_activate(pm);
-            if (s == PM_OK) hal_write32(HSM_REG_CMD, HSM_C_CONFIRM);
+            if (s == PM_OK) {
+                hal_write32(HSM_REG_CMD, HSM_C_CONFIRM);
+                pstore_raise_floor(pm->store, m.version);   /* heals a loss between commit and raise */
+            }
         }
     }
     hal_write32(HSM_REG_CMD, HSM_C_LOCK);            /* fail-secure: window closes even if restore failed */
@@ -120,6 +138,7 @@ pm_status_t pm_install(pm_t *pm, const uint8_t *pkg, size_t len)
         (void)wait_not_busy(&st);
         return PM_ERR_STORE;
     }
+    pstore_raise_floor(pm->store, p.version);
     fault_point(pm, PM_FP_COMMITTED);
     hal_write32(HSM_REG_CMD, HSM_C_CONFIRM);
     return PM_OK;
