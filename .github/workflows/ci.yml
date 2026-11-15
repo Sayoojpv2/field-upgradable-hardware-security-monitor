@@ -81,3 +81,24 @@ jobs:
           echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
       - name: SymbiYosys k-induction (smtbmc + yices); any non-PASS task fails the job
         run: cd formal && sby -f hsm.sby
+      # Non-vacuity: the same planted bugs as scripts/mutation_check.py must give a concrete FAIL.
+      - name: SymbiYosys non-vacuity, planted bugs must FAIL
+        run: |
+          for pair in "bank writes reach the ACTIVE bank:bank" "monitor ignores privilege requirement:monitor_sound"; do
+            bug="${pair%%:*}"; task="${pair##*:}"
+            python3 -c 'import sys; from pathlib import Path; sys.path.insert(0, "scripts"); from mutation_check import MUTANTS; d, f, a, b = next(m for m in MUTANTS if m[0] == sys.argv[1]); p = Path("rtl") / f; s = p.read_text(); assert s.count(a) == 1, d; p.write_text(s.replace(a, b))' "$bug"
+            if (cd formal && sby -f hsm.sby "$task" > "../sby_mutant_$task.log"); then
+              echo "::error::planted bug '$bug' was not caught by task $task"; exit 1
+            fi
+            grep -q "DONE (FAIL" "sby_mutant_$task.log" || { tail -20 "sby_mutant_$task.log"; exit 1; }
+            echo "caught: $bug (task $task FAIL)"
+            git checkout -- rtl
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: formal-sby
+          path: |
+            formal/hsm_*/status
+            formal/hsm_*/logfile.txt
+            sby_mutant_*.log

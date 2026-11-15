@@ -266,7 +266,9 @@ module tb_policy_update;
 
   task automatic t_reset_during_update();
     logic [31:0] s;
-    int stop_state [6] = '{S_RECEIVE, S_VALIDATE, S_READY, S_WAIT_IDLE, S_SWITCH, S_COMPLETE};
+    int stop_state [6];
+    stop_state[0] = S_RECEIVE; stop_state[1] = S_VALIDATE; stop_state[2] = S_READY;  // no array literal: Icarus 12
+    stop_state[3] = S_WAIT_IDLE; stop_state[4] = S_SWITCH; stop_state[5] = S_COMPLETE;
     for (int k = 0; k < 6; k++) begin
       chain_to_v4();
       load("candidates/cand_v5_dma_reopen");
