@@ -231,7 +231,7 @@
   ],
   "synth_n8": {
     "static": {
-      "gate_cells": "330",
+      "gate_cells": "315",
       "flip_flops": "9",
       "lut6": "61"
     },
@@ -241,9 +241,9 @@
       "lut6": "831"
     },
     "bounded dual-bank": {
-      "gate_cells": "11614",
+      "gate_cells": "11603",
       "flip_flops": "1432",
-      "lut6": "3516"
+      "lut6": "3496"
     }
   },
   "fault_injection": {

@@ -6,7 +6,7 @@
       "mode": "prove",
       "status": "PROVED",
       "depth": 1,
-      "seconds": 0.9,
+      "seconds": 1.2,
       "max_sat_variables": 39790,
       "assertions": 4
     },
@@ -16,7 +16,7 @@
       "mode": "comb",
       "status": "PROVED",
       "depth": null,
-      "seconds": 0.7,
+      "seconds": 0.9,
       "max_sat_variables": 20255,
       "assertions": 2
     },
@@ -26,7 +26,7 @@
       "mode": "comb",
       "status": "PROVED",
       "depth": null,
-      "seconds": 0.7,
+      "seconds": 1.0,
       "max_sat_variables": 23527,
       "assertions": 1
     },
@@ -36,7 +36,7 @@
       "mode": "comb",
       "status": "PROVED",
       "depth": null,
-      "seconds": 0.7,
+      "seconds": 0.9,
       "max_sat_variables": 19935,
       "assertions": 10
     },
@@ -46,7 +46,7 @@
       "mode": "comb",
       "status": "PROVED",
       "depth": null,
-      "seconds": 0.7,
+      "seconds": 0.9,
       "max_sat_variables": 20117,
       "assertions": 1
     },
@@ -56,7 +56,7 @@
       "mode": "comb",
       "status": "PROVED",
       "depth": null,
-      "seconds": 0.6,
+      "seconds": 0.8,
       "max_sat_variables": 2956,
       "assertions": 2
     },
@@ -66,7 +66,7 @@
       "mode": "prove",
       "status": "PROVED",
       "depth": 1,
-      "seconds": 12.6,
+      "seconds": 21.9,
       "max_sat_variables": 216529,
       "assertions": 11
     },
@@ -76,7 +76,7 @@
       "mode": "prove",
       "status": "PROVED",
       "depth": 1,
-      "seconds": 5.2,
+      "seconds": 8.7,
       "max_sat_variables": 101459,
       "assertions": 11
     },
@@ -86,7 +86,7 @@
       "mode": "prove",
       "status": "PROVED",
       "depth": 1,
-      "seconds": 0.6,
+      "seconds": 0.8,
       "max_sat_variables": 12271,
       "assertions": 15
     },
@@ -96,7 +96,7 @@
       "mode": "prove",
       "status": "PROVED",
       "depth": 1,
-      "seconds": 2.3,
+      "seconds": 3.2,
       "max_sat_variables": 176747,
       "assertions": 10
     },
@@ -106,7 +106,7 @@
       "mode": "bmc",
       "status": "BOUNDED PASS",
       "depth": 40,
-      "seconds": 530.5,
+      "seconds": 845.6,
       "max_sat_variables": 1454882,
       "assertions": 5
     }
@@ -116,49 +116,49 @@
       "cover": "legitimate transaction granted",
       "status": "REACHED",
       "depth": 5,
-      "seconds": 1.0
+      "seconds": 1.2
     },
     {
       "cover": "transaction denied (known master)",
       "status": "REACHED",
       "depth": 5,
-      "seconds": 1.1
+      "seconds": 1.2
     },
     {
       "cover": "8-slot candidate accepted",
       "status": "REACHED",
       "depth": 44,
-      "seconds": 29.1
+      "seconds": 36.2
     },
     {
       "cover": "foreign-rule candidate rejected",
       "status": "REACHED",
       "depth": 12,
-      "seconds": 8.0
+      "seconds": 7.4
     },
     {
       "cover": "envelope escape rejected",
       "status": "REACHED",
       "depth": 12,
-      "seconds": 7.2
+      "seconds": 7.5
     },
     {
       "cover": "overlap found in the last slot pair",
       "status": "REACHED",
       "depth": 44,
-      "seconds": 32.6
+      "seconds": 30.8
     },
     {
       "cover": "controller activates a candidate",
       "status": "REACHED",
       "depth": 12,
-      "seconds": 0.8
+      "seconds": 0.9
     },
     {
       "cover": "switch waits for a busy bus",
       "status": "REACHED",
       "depth": 14,
-      "seconds": 0.9
+      "seconds": 1.0
     },
     {
       "cover": "candidate rejected (FOREIGN)",
@@ -170,25 +170,25 @@
       "cover": "revert completes",
       "status": "REACHED",
       "depth": 16,
-      "seconds": 1.1
+      "seconds": 1.0
     },
     {
       "cover": "system: bank switch after validation",
       "status": "REACHED",
       "depth": 22,
-      "seconds": 5.6
+      "seconds": 5.8
     },
     {
       "cover": "system: switch waits for a granted burst",
       "status": "REACHED",
       "depth": 42,
-      "seconds": 12.7
+      "seconds": 13.9
     },
     {
       "cover": "system: failed update keeps the policy",
       "status": "REACHED",
       "depth": 34,
-      "seconds": 9.5
+      "seconds": 10.4
     }
   ],
   "mutants": [

@@ -11,18 +11,18 @@
 ## Synthesis (Yosys generic `synth`, and `synth -lut 6`)
 | design | mode | nrules | gate_cells | flip_flops | comb_gate_cells | lut6 | lut6_flow_ffs |
 |---|---|---|---|---|---|---|---|
-| static | 0 | 2 | 231 | 7 | 224 | 34 | 7 |
-| static | 0 | 4 | 269 | 8 | 261 | 48 | 8 |
+| static | 0 | 2 | 228 | 7 | 221 | 35 | 7 |
+| static | 0 | 4 | 273 | 8 | 265 | 48 | 8 |
 | static | 0 | 6 | 284 | 9 | 275 | 54 | 9 |
-| static | 0 | 8 | 330 | 9 | 321 | 61 | 9 |
+| static | 0 | 8 | 315 | 9 | 306 | 61 | 9 |
 | configurable (unbounded) | 1 | 2 | 1485 | 167 | 1318 | 303 | 167 |
-| configurable (unbounded) | 1 | 4 | 2558 | 328 | 2230 | 467 | 328 |
+| configurable (unbounded) | 1 | 4 | 2559 | 328 | 2231 | 470 | 328 |
 | configurable (unbounded) | 1 | 6 | 3641 | 489 | 3152 | 681 | 489 |
 | configurable (unbounded) | 1 | 8 | 4721 | 649 | 4072 | 831 | 649 |
-| bounded dual-bank | 2 | 2 | 4403 | 470 | 3933 | 1183 | 470 |
-| bounded dual-bank | 2 | 4 | 6787 | 791 | 5996 | 2014 | 791 |
-| bounded dual-bank | 2 | 6 | 8950 | 1112 | 7838 | 2769 | 1112 |
-| bounded dual-bank | 2 | 8 | 11614 | 1432 | 10182 | 3516 | 1432 |
+| bounded dual-bank | 2 | 2 | 4420 | 470 | 3950 | 1213 | 470 |
+| bounded dual-bank | 2 | 4 | 6811 | 791 | 6020 | 2089 | 791 |
+| bounded dual-bank | 2 | 6 | 8968 | 1112 | 7856 | 2775 | 1112 |
+| bounded dual-bank | 2 | 8 | 11603 | 1432 | 10171 | 3496 | 1432 |
 
 ## Bounded design per module (NRULES=8, hierarchy kept)
 | module | gate_cells | flip_flops |

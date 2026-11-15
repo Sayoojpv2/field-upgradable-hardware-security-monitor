@@ -4,33 +4,33 @@ Engine: Yosys built-in SAT (MiniSAT) via yowasp-yosys. k = induction length; dep
 
 | Job | Property | Method | Result | k / depth | max SAT variables | seconds |
 |---|---|---|---|---:|---:|---:|
-| A_monitor_protocol | A | k-induction | PROVED | 1 | 39790 | 0.9 |
-| A_monitor_sound | A | one-step SAT, all state free | PROVED | - | 20255 | 0.7 |
-| A_monitor_deny | A | one-step SAT, all state free | PROVED | - | 23527 | 0.7 |
-| A_monitor_priority | A | one-step SAT, all state free | PROVED | - | 19935 | 0.7 |
-| A_monitor_grant | A | one-step SAT, all state free | PROVED | - | 20117 | 0.7 |
-| A_spec_lemmas | A | one-step SAT, all state free | PROVED | - | 2956 | 0.6 |
-| B_validator | B,F | k-induction | PROVED | 1 | 216529 | 12.6 |
-| C_bank | C | k-induction | PROVED | 1 | 101459 | 5.2 |
-| CDEF_controller | C,D,E,F | k-induction | PROVED | 1 | 12271 | 0.6 |
-| D_top_registered_bus | D | k-induction | PROVED | 1 | 176747 | 2.3 |
-| E2E_top_n2 | B,C,E | bounded model check | BOUNDED PASS | 40 | 1454882 | 530.5 |
+| A_monitor_protocol | A | k-induction | PROVED | 1 | 39790 | 1.2 |
+| A_monitor_sound | A | one-step SAT, all state free | PROVED | - | 20255 | 0.9 |
+| A_monitor_deny | A | one-step SAT, all state free | PROVED | - | 23527 | 1.0 |
+| A_monitor_priority | A | one-step SAT, all state free | PROVED | - | 19935 | 0.9 |
+| A_monitor_grant | A | one-step SAT, all state free | PROVED | - | 20117 | 0.9 |
+| A_spec_lemmas | A | one-step SAT, all state free | PROVED | - | 2956 | 0.8 |
+| B_validator | B,F | k-induction | PROVED | 1 | 216529 | 21.9 |
+| C_bank | C | k-induction | PROVED | 1 | 101459 | 8.7 |
+| CDEF_controller | C,D,E,F | k-induction | PROVED | 1 | 12271 | 0.8 |
+| D_top_registered_bus | D | k-induction | PROVED | 1 | 176747 | 3.2 |
+| E2E_top_n2 | B,C,E | bounded model check | BOUNDED PASS | 40 | 1454882 | 845.6 |
 
 | Reachability (cover) | Result | within depth | seconds |
 |---|---|---:|---:|
-| legitimate transaction granted | REACHED | 5 | 1.0 |
-| transaction denied (known master) | REACHED | 5 | 1.1 |
-| 8-slot candidate accepted | REACHED | 44 | 29.1 |
-| foreign-rule candidate rejected | REACHED | 12 | 8.0 |
-| envelope escape rejected | REACHED | 12 | 7.2 |
-| overlap found in the last slot pair | REACHED | 44 | 32.6 |
-| controller activates a candidate | REACHED | 12 | 0.8 |
-| switch waits for a busy bus | REACHED | 14 | 0.9 |
+| legitimate transaction granted | REACHED | 5 | 1.2 |
+| transaction denied (known master) | REACHED | 5 | 1.2 |
+| 8-slot candidate accepted | REACHED | 44 | 36.2 |
+| foreign-rule candidate rejected | REACHED | 12 | 7.4 |
+| envelope escape rejected | REACHED | 12 | 7.5 |
+| overlap found in the last slot pair | REACHED | 44 | 30.8 |
+| controller activates a candidate | REACHED | 12 | 0.9 |
+| switch waits for a busy bus | REACHED | 14 | 1.0 |
 | candidate rejected (FOREIGN) | REACHED | 10 | 0.8 |
-| revert completes | REACHED | 16 | 1.1 |
-| system: bank switch after validation | REACHED | 22 | 5.6 |
-| system: switch waits for a granted burst | REACHED | 42 | 12.7 |
-| system: failed update keeps the policy | REACHED | 34 | 9.5 |
+| revert completes | REACHED | 16 | 1.0 |
+| system: bank switch after validation | REACHED | 22 | 5.8 |
+| system: switch waits for a granted burst | REACHED | 42 | 13.9 |
+| system: failed update keeps the policy | REACHED | 34 | 10.4 |
 
 | Planted bug | Proof expected to fail | Result |
 |---|---|---|
