@@ -1,8 +1,8 @@
 # Results
 
 Every number below comes from a run in this repository: an RTL simulation (Icarus Verilog 13.0),
-a Yosys 0.70 run, the firmware test binary (GCC 16.2), or the generated packages. Regenerate them
-with `make test` and `make experiments`. Data: `results/*.csv`, `results/summary.json`; per-decision
+a Yosys 0.70 run (synthesis or formal), the firmware test binary (GCC 16.2), or the generated
+packages. Regenerate them with `make test`, `make experiments` and `make formal`. Data: `results/*.csv`, `results/summary.json`; per-decision
 logs are regenerated in `results/raw/` by `make experiments` and are not committed. Method and caveats: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
 These are simulation and generic-synthesis results, not FPGA, ASIC or hardware measurements.
 
@@ -10,14 +10,17 @@ These are simulation and generic-synthesis results, not FPGA, ASIC or hardware m
 
 | Suite | Result |
 |---|---|
-| Python (`pytest`, tools + cross-language constant/authority-table checks) | 29 passed |
+| Python (`pytest`: tools, cross-language constants, independent model vs production model) | 34 passed |
 | C firmware (`test_firmware`) | 1 239 checks, 0 failures |
 | C firmware under UBSan (`-fsanitize=undefined -fsanitize-trap=all`, local) | 1 239 checks, no trap |
 | C firmware under ASan + UBSan | configured in CI only; not run (MinGW has no ASan runtime) |
-| RTL regression (`run_rtl.py`) | 11/11 testbench runs, 7 982 checks, 0 errors |
+| RTL regression (`run_rtl.py`) | 25/25 testbench runs, 31 829 checks, 0 errors |
+| RTL vs independent reference model (`tests/independent_model.py`) | 10 987 comparisons, 0 mismatches (see section 9) |
 | Firmware → RTL MMIO replay (C test suite) | 17 852 operations, 2 993 read-backs identical, 431 resets |
 | Firmware → RTL MMIO replay (demo) | 381 operations, identical |
-| Mutation check (planted RTL security bugs, every mutant must compile) | 21/21 caught |
+| Mutation check, simulation (planted RTL security bugs, every mutant must compile) | 22/22 caught |
+| Formal verification (`make formal`, Yosys SAT) | 10 jobs PROVED, 1 BOUNDED PASS (depth 40), 13/13 covers reached, 10/10 planted bugs give a counterexample (section 10) |
+| SymbiYosys (`formal/hsm.sby`, CI job `formal-sby`) | NOT RUN (no SMT solver locally; nothing pushed) |
 | Package fuzzing (3 000 random corruptions of a signed package) | 0 accepted |
 | Truncation (every length shorter than a valid package) | all rejected as `TRUNCATED` |
 | Yosys `check -assert`, latch scan | clean, 0 latches in all 24 configurations |
@@ -166,7 +169,61 @@ power, so they are not comparable with the FPGA LUT figures in the referenced pr
 
 Module-level synthesis in isolation; both versions pass the full regression and mutation check.
 
-## 8. Not measured
+## 9. Independent reference model
+
+`tests/independent_model.py` re-implements the monitor decision and the bounded-authority check
+from the design document, with its own constants and no import from `tools/`. Its vectors are adversarial:
+
+- every owner ID 0–15 and rules in all 8 slots;
+- addresses on and one past every envelope bound;
+- bursts 0, 1, max, max+1 and 255;
+- overlapping, duplicate and inverted rules, a rule reaching `0xFFFFFFFF`, and invalid owners;
+- declared counts 0–15, reserved ATTR bits, and requesters 0–15 including ROOT outside the boot window.
+
+| Comparison | Vectors | Mismatches |
+|---|---:|---:|
+| Monitor decisions, 12 adversarial policies, unbounded design (any rule can be written) | 7 932 | 0 |
+| Monitor decisions, valid base policy, bounded design | 636 | 0 |
+| Validator outcome (error code and slot) after BEGIN + writes + VALIDATE, bounded design | 2 419 | 0 |
+| Independent model vs production Python model (`pytest`) | all comparable vectors | 0 |
+
+Every validator error code and every error slot 0–7 occurs. The RTL comparison's first run
+reported mismatches, all traced to a bug in the vector generator: rule starts above 32 bits,
+which the testbench truncated. The generator now rejects any value wider than 32 bits. No RTL defect was found.
+
+## 10. Formal verification
+
+Engine: Yosys 0.70 built-in SAT (MiniSAT) via yowasp-yosys. Total run time of `make formal`:
+about 560 s on this laptop. Full table with solver sizes: [results/formal.md](results/formal.md);
+method, assumptions and limitations: [formal/README.md](formal/README.md).
+
+| Property | Module | Method | Result |
+|---|---|---|---|
+| A: every grant permitted; default deny; no false deny for validated policies; 1-cycle decision protocol | `bus_security_monitor` | one-step SAT and k-induction | PROVED (completeness via three proved lemmas) |
+| B/F: accepted ⇔ inside every owner's envelope, no foreign change, no overlap, count and version correct; all 8 slots | `policy_validator` | k-induction (k=1) | PROVED |
+| C: only a swap changes the active bank; writes only while staging | `policy_bank`, `policy_update_controller` | k-induction (k=1) | PROVED |
+| D: switch only at an idle boundary; never during a granted burst, with a registered (one-cycle-late) interconnect | `policy_update_controller`, `security_monitor_top` (8 slots) | k-induction (k=1) | PROVED |
+| E/F: only a validated, untouched candidate can switch in; versions change only at a switch; activation raises the version | `policy_update_controller` | k-induction (k=1) | PROVED |
+| End-to-end: what switches in satisfies the authority spec | `security_monitor_top` (2 slots) | BMC | BOUNDED PASS, 40 cycles |
+| Recovery never below the committed version | C firmware | C tests only | not formally verified |
+
+The 13 covers include an 8-slot candidate being accepted, a switch waiting for a granted burst, and
+a failed update after an activation. Ten planted bugs each produced a counterexample, including the
+race fixed in `d426302`. Its trace is kept in `formal/cex/`: a REVERT accepted in the same cycle a
+burst is granted flips the bank with 2 beats outstanding.
+
+## 11. Comparison of the three designs, including assurance
+
+| | Static | Configurable (unbounded) | Bounded dual-bank |
+|---|---|---|---|
+| Monitor datapath properties (A) | apply (same module) | apply (same module) | PROVED |
+| Bounded authority, atomic switch (B–F) | n/a (cannot be updated) | do not hold by design (8/8 malicious updates took effect) | PROVED (unit level) + 40-cycle end-to-end BMC |
+| Decision latency | 1 cycle | 1 cycle | 1 cycle |
+| Validation / switch cost | n/a | none | 39 cycles (8 slots) / about 15 held cycles on a busy bus |
+| Generic cells / FFs, 8 rules | 330 / 9 | 4 721 / 649 | 11 614 / 1 432 |
+
+## 12. Not measured
 
 Timing (Fmax), power, FPGA or ASIC area, signature verification time, firmware code size on a
-target CPU, and anything on physical hardware.
+target CPU, anything on physical hardware, formal verification of the C firmware, and the
+SymbiYosys/SMT runs (configured for CI, not executed).

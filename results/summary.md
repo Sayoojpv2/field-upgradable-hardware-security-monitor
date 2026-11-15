@@ -100,4 +100,4 @@
 
 Torn-write sweep: 205/205 interrupted installs restored the committed policy.
 
-RTL regression: 11/11 testbench runs, 7982 checks.
+RTL regression: 25/25 testbench runs, 31829 checks.

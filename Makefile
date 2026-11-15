@@ -32,7 +32,7 @@ PKGS    := build/pkgs/.stamp
 TESTBIN := build/fw/test_firmware$(EXE)
 DEMOBIN := build/fw/fw_demo$(EXE)
 
-.PHONY: all test test-py test-c sim-rtl mutation synth demo experiments clean distclean venv
+.PHONY: all test test-py test-c sim-rtl mutation formal synth demo experiments clean distclean venv
 
 all: test
 
@@ -76,6 +76,10 @@ sim-rtl: test-c
 # plant known security bugs in a copy of the RTL; every one must be caught
 mutation: sim-rtl
 	$(PY) scripts/mutation_check.py
+
+# formal verification with Yosys' built-in SAT engine: proofs, BMC, covers, planted-bug check
+formal: .venv/.installed
+	$(PY) scripts/run_formal.py
 
 synth: .venv/.installed
 	$(PY) scripts/synth.py

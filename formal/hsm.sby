@@ -1,0 +1,67 @@
+# SymbiYosys configuration for the same harnesses that scripts/run_formal.py checks locally with
+# Yosys' built-in SAT engine. Needs an SMT solver (yices); run by the "formal-sby" CI job with a
+# pinned OSS CAD Suite. NOT run locally: this Windows machine has no SMT solver.
+#   cd formal && sby -f hsm.sby
+
+[tasks]
+monitor_protocol
+monitor_sound
+monitor_deny
+monitor_priority
+monitor_grant
+spec_lemmas
+validator
+bank
+controller
+top
+
+[options]
+mode prove
+depth 4
+controller: depth 6
+
+[engines]
+smtbmc yices
+
+[script]
+verilog_defines -DFV_SBY
+monitor_sound: verilog_defines -DFV_MONITOR -DFV_A_SOUND
+monitor_deny: verilog_defines -DFV_MONITOR -DFV_A_DENY
+monitor_priority: verilog_defines -DFV_MONITOR -DFV_A_PRIORITY
+monitor_grant: verilog_defines -DFV_MONITOR -DFV_A_GRANT
+validator: verilog_defines -DFV_VALIDATOR -DFV_DIAG
+controller: verilog_defines -DFV_CONTROLLER -DFV_CONTROLLER_UNIT
+top: verilog_defines -DFV_TOP
+read -formal -sv bus_security_monitor.sv policy_bank.sv policy_validator.sv policy_update_controller.sv security_monitor_top.sv
+monitor_protocol: read -formal -sv fv_monitor.sv
+validator: read -formal -sv fv_validator.sv
+bank: read -formal -sv fv_bank.sv
+controller: read -formal -sv fv_controller.sv
+top: read -formal -sv fv_top.sv
+spec_lemmas: read -formal -sv fv_spec.sv
+monitor_protocol: prep -top fv_monitor
+monitor_sound monitor_deny monitor_priority monitor_grant: prep -top bus_security_monitor
+spec_lemmas: prep -top fv_spec
+validator: prep -top fv_validator
+bank: prep -top fv_bank
+controller: prep -top fv_controller
+top: prep -top fv_top
+
+[files]
+../rtl/hsm_defs.svh
+../rtl/bus_security_monitor.sv
+../rtl/policy_bank.sv
+../rtl/policy_validator.sv
+../rtl/policy_update_controller.sv
+../rtl/security_monitor_top.sv
+spec.svh
+monitor_props.svh
+validator_props.svh
+controller_props.svh
+top_props.svh
+fv_monitor.sv
+fv_validator.sv
+fv_bank.sv
+fv_controller.sv
+fv_top.sv
+fv_spec.sv

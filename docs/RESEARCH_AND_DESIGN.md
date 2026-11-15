@@ -20,6 +20,8 @@ rules that protect *other* components.
 | *Language Semantics to Support Secure Computation and Communication in Embedded Systems via Hardware Monitors* (D-GUARD), Integration, the VLSI Journal, 2025, doi:10.1016/j.vlsi.2025.102367 | Peer reviewed | **Full text not accessible** from this environment (publisher returned HTTP 403). Used only for motivation as described in the project brief; no technical claim below depends on it |
 | *The Road Not Taken: eFPGA Accelerators Utilized for SoC Security Auditing* (EnSAFe), IEEE TCAD, 2024, doi:10.1109/TCAD.2024.3387350 | Peer reviewed | **Full text not accessible** (publisher blocked automated access). Used only for motivation, as above |
 | NIST SP 800-193, *Platform Firmware Resiliency Guidelines* (2018) | Standard | Full PDF; sections 3.5 (update mechanisms) and 4.1 (roots of trust) read in detail |
+| C. Nokes et al., *Verifying Hardware Resource Isolation through Mandatory Access Control Policy*, ISQED 2026 (NIST record, May 2026), doi:10.1109/ISQED69900.2026.11534784 | Peer-reviewed conference paper | Abstract and the NIST PDF: transaction checkers with translation, mapping and verification stages; Biba-style MAC; simulation-based environments for three RISC-V cores (CV32E40S and Ibex named); six isolation issues found; under 10% simulation overhead. Used as the method for the formal properties |
+| SymbiYosys documentation | Tool documentation | Modes (prove/bmc/cover), engines, assumptions and covers; used to write `formal/hsm.sby` |
 
 Anyone citing D-GUARD or EnSAFe in a report should read them first; this repository does
 not summarise their internals because they could not be read.
@@ -336,11 +338,22 @@ next successful boot.
 - **Sanitizers**: the C suite runs clean under UBSan (trap mode) locally. CI adds
   AddressSanitizer + UBSan on Ubuntu, which has not run yet.
 
-The Python, C and RTL models were written by the same developer from the same specification.
-Agreement between them catches implementation slips but not a shared misunderstanding of the
-specification; the hand-written expectations in the directed tests are the only independent
-check. Seeded mutation testing measures test sensitivity and is not formal verification. No
-formal verification was performed.
+- **Formal verification** (`formal/`, `make formal`). The properties follow the transaction-checker
+  method of Nokes et al.: master ID = subject, address range = object, read/write + privilege +
+  burst = access mode, active rule bank inside the authority envelopes = policy. An executable
+  specification (`formal/spec.svh`, not reusing `hsm_defs.svh`) is checked against the RTL with
+  Yosys' built-in SAT engine.
+  - **Proved:** properties A–F, by one-step SAT or k-induction.
+  - **Bounded only:** the end-to-end property, to 40 cycles on a 2-slot configuration.
+  - **Non-vacuity:** 13 covers and 10 planted bugs, each with a counterexample.
+  - See `formal/README.md` for assumptions, the assume-guarantee composition, and what is not covered.
+- **Independent reference model** (`tests/independent_model.py`): monitor and validator rewritten
+  from this document with no code shared with `tools/`. On adversarial vectors it agrees with the RTL
+  (10 987 comparisons) and with the production model.
+
+The specification, both Python models and the RTL still share one author. Agreement between them
+catches implementation slips, not a shared misunderstanding of the intent. Seeded mutation testing
+measures test sensitivity and is not a proof. The C firmware was tested, not formally verified.
 
 ## 12. Design iteration recorded
 

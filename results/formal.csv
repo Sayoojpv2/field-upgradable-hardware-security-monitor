@@ -1,0 +1,12 @@
+job,property,mode,status,depth,seconds,max_sat_variables,assertions
+A_monitor_protocol,A,prove,PROVED,1,0.9,39790,4
+A_monitor_sound,A,comb,PROVED,,0.7,20255,2
+A_monitor_deny,A,comb,PROVED,,0.7,23527,1
+A_monitor_priority,A,comb,PROVED,,0.7,19935,10
+A_monitor_grant,A,comb,PROVED,,0.7,20117,1
+A_spec_lemmas,A,comb,PROVED,,0.6,2956,2
+B_validator,"B,F",prove,PROVED,1,12.6,216529,11
+C_bank,C,prove,PROVED,1,5.2,101459,11
+CDEF_controller,"C,D,E,F",prove,PROVED,1,0.6,12271,15
+D_top_registered_bus,D,prove,PROVED,1,2.3,176747,10
+E2E_top_n2,"B,C,E",bmc,BOUNDED PASS,40,530.5,1454882,5

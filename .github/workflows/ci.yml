@@ -47,3 +47,37 @@ jobs:
             results/
             build/results/
             build/reports/
+
+  # Formal verification with the same engine used locally (Yosys built-in SAT via yowasp-yosys).
+  formal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Proofs, BMC, covers and planted-bug check
+        run: make formal PYTHON=python3 YOSYS=.venv/bin/yowasp-yosys
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: formal
+          path: |
+            results/formal.json
+            build/formal/*.log
+            build/formal/*.vcd
+
+  # The same harnesses under SymbiYosys with an SMT solver, from a pinned OSS CAD Suite release.
+  formal-sby:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OSS CAD Suite 2026-11-14 (pinned)
+        run: |
+          curl -fsSL -o ocs.tgz https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-11-14/oss-cad-suite-linux-x64-20261114.tgz
+          tar -xzf ocs.tgz
+          echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
+      - name: SymbiYosys k-induction (smtbmc + yices); any non-PASS task fails the job
+        run: cd formal && sby -f hsm.sby

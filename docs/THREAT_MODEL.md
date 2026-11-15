@@ -47,6 +47,7 @@ trusted policy manager). This is an academic architecture study, not a certified
 
 | Attack | Mechanism | Evidence |
 |---|---|---|
+| A1 any authority escape (all rows below) | validator accepts only candidates inside every owner's envelope with other owners' rules unchanged | formal: `B_validator` PROVED for all 8 slots (see formal/README.md) |
 | A1 expand address range | envelope containment (`ADDR_ESCAPE`) | `atk_dma_expand`, RTL + C tests |
 | A1 add permissions | permission containment (`PERM_ESC`) | `atk_diag_write` |
 | A1 drop mandatory privilege | privilege floor (`PRIV_FLOOR`) | `atk_diag_unpriv` |
@@ -57,8 +58,8 @@ trusted policy manager). This is an academic architecture study, not a certified
 | A2 tampering, wrong key, wrong device, truncation | Ed25519 over header + BLAKE2b digest of payload; length checks first | C tests incl. 3 000-mutation fuzz and every truncation length |
 | A2 replay / downgrade | firmware version chain + hardware `VERSION` check | C and RTL tests |
 | A6 storage rollback to an older signed image | one-way anti-rollback counter checked at boot; fail-secure default deny | C test `test_storage_rollback` (fails without the counter) |
-| A3 out-of-policy transactions | default-deny monitor with burst-span and wrap checks | 477-transaction corpus, directed tests |
-| A4 half-applied policy | writes only to the inactive bank, one-bit switch at a held, idle boundary; the grant cycle never counts as idle | update-under-traffic experiment: 0 inconsistent decisions; registered-interconnect RTL test |
+| A3 out-of-policy transactions | default-deny monitor with burst-span and wrap checks | 477-transaction corpus, directed tests, 8 568 adversarial decisions vs independent model; formal: every grant permitted (PROVED) |
+| A4 half-applied policy | writes only to the inactive bank, one-bit switch at a held, idle boundary; the grant cycle never counts as idle | update-under-traffic experiment: 0 inconsistent decisions; registered-interconnect RTL test; formal: `C_bank`, `CDEF_controller`, `D_top_registered_bus` PROVED |
 | A4 TOCTOU on requester / candidate | configuration frozen after `BEGIN`; rule writes ignored after `VALIDATE` | RTL tests |
 | A5 interruption | A/B store, metadata copies with CRC, re-authentication at boot, revert before confirm | 7 fault points + 205-byte torn-write sweep |
 

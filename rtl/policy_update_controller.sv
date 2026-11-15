@@ -153,4 +153,8 @@ module policy_update_controller #(
       default:          reg_rdata = 32'd0;
     endcase
 
+`ifdef FORMAL
+`include "controller_props.svh"
+`endif
+
 endmodule

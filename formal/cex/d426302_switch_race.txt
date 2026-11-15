@@ -1,0 +1,32 @@
+Counterexample found by scripts/run_formal.py on the RTL with the d426302 fix removed
+(bus_idle no longer ignored in the grant cycle). Registered interconnect model, NRULES=2.
+Read it as: a burst is granted (dec_valid && dec_allow) in the cycle a switch is requested; the
+interconnect only sees it a cycle later, so bus_idle still reads 1 and 'swap' fires while
+'fv_beats' > 0 - the bank select flips while that burst is still transferring.
+CMD writes go to reg_addr 0; reg_wdata[3:0] is the command (3 ACTIVATE, 5 REVERT).
+
+step     rst_n    reg_we  reg_addr reg_wdata txn_valid txn_ready txn_burst dec_valid dec_allow  bus_idle  fv_beats      swap       sel
+   1         0         0       199         5         0         1       121         0         0         1         0         0         0
+   2         1         1         0      4097         0         1        48         0         0         1         0         0         0
+   3         1         1        16     16385         0         1        16         0         0         0         0         0         0
+   4         1         1        12        32         0         1         0         0         0         1         0         0         0
+   5         1         1         0         6         0         1         0         0         0         1         0         0         0
+   6         1         0         8         7         1         1       208         0         0         1         0         0         0
+   7         1         1         0 2147615745         0         1         4         1         0         1         0         0         0
+   8         1         1        88 2147484930         0         1        97         0         0         1         0         0         0
+   9         1         1         0         2         0         1         0         0         0         1         0         0         0
+  10         1         1         0        66         1         1         0         0         0         0         0         0         0
+  11         1         1         0 2147483649         0         1       169         1         0         1         0         0         0
+  12         1         1         0 2147483648         0         1         0         0         0         1         0         0         0
+  13         1         1         0      1025         0         1        65         0         0         1         0         0         0
+  14         1         1         0 2147615745         0         1        15         0         0         1         0         0         0
+  15         1         1         0         1         0         1         6         0         0         0         0         0         0
+  16         1         1         0         3         0         1         4         0         0         1         0         0         0
+  17         1         1         0 2147483649         0         0       129         0         0         0         0         0         0
+  18         1         1         0 2147483809         0         0         0         0         0         1         0         0         0
+  19         1         1         0 2147484065         0         0         4         0         0         0         0         1         0
+  20         1         1         0     57772         0         1       160         0         0         1         0         0         1
+  21         1         1         0     57761         0         1         0         0         0         1         0         0         1
+  22         1         1         0 2147483653         1         1         2         0         0         0         0         0         1
+  23         1         1         0         6         0         0         8         1         1         1         0         0         1
+  24         1         1        12         0         0         0         0         0         1         0         2         1         1

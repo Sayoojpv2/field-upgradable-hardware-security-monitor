@@ -80,4 +80,8 @@ module bus_security_monitor #(
 
   assign dec_violation = dec_valid && !dec_allow;
 
+`ifdef FORMAL
+`include "monitor_props.svh"
+`endif
+
 endmodule

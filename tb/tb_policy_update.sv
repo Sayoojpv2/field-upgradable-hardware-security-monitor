@@ -293,6 +293,46 @@ module tb_policy_update;
   endtask
 
   // ------------------------------------------------------------------------------------------
+  // Validator vectors from tests/independent_model.py (73 words each): optional committed base policy,
+  // then requester, version, declared count and raw rule writes; expected error code and slot.
+  logic [31:0] vv [0:262143];
+  task automatic valvec(input string f);
+    int nv, b, mism;
+    logic [31:0] s, got_err, got_slot;
+    mism = 0;
+    $readmemh(f, vv);
+    nv = vv[0];
+    for (int n = 0; n < nv; n++) begin
+      b = 1 + n * 73;
+      do_reset();
+      if (vv[b] != 0) begin
+        pw[0] = {28'd0, OWNER_ROOT}; pw[1] = vv[b+1]; pw[2] = vv[b+2];
+        for (int k = 0; k < 32; k++) pw[3+k] = vv[b+3+k];
+        install_pw(E_NONE, 0, "independent base policy");
+      end
+      wr(A_REQ_OWNER, vv[b+35]); wr(A_CAND_VERSION, vv[b+36]); wr(A_RULE_COUNT, vv[b+37]); wr(A_CMD, {28'd0, C_BEGIN});
+      rd(A_STATUS, s);
+      if (st(s) == S_RECEIVE) begin
+        for (int w = 0; w < vv[b+38]; w++) begin
+          wr(rule_reg(vv[b+39+4*w], 0), vv[b+40+4*w]);
+          wr(rule_reg(vv[b+39+4*w], 1), vv[b+41+4*w]);
+          wr(rule_reg(vv[b+39+4*w], 2), vv[b+42+4*w]);
+        end
+        wr(A_CMD, {28'd0, C_VALIDATE}); wait_not_busy(s);
+      end
+      got_err  = (st(s) == S_READY) ? 32'd0 : {24'd0, s[15:8]};
+      got_slot = (st(s) == S_READY) ? 32'd0 : {29'd0, s[18:16]};
+      if (!(st(s) == S_READY || st(s) == S_ERROR) || got_err != vv[b+71] || got_slot != vv[b+72]) begin
+        mism++;
+        if (mism <= 10) $display("  vector %0d: RTL state %0d err %0d slot %0d, independent model err %0d slot %0d",
+                                 n, st(s), got_err, got_slot, vv[b+71], vv[b+72]);
+      end
+    end
+    check(nv > 0, "validator vectors loaded");
+    check(mism == 0, $sformatf("%0d of %0d validator outcomes differ from the independent model", mism, nv));
+    $display("VALVEC compared=%0d mismatches=%0d", nv, mism);
+  endtask
+
   task automatic measure();
     logic [31:0] s;
     int t_start, t_val, t_ready, t_done, stall = 0;
@@ -316,6 +356,10 @@ module tb_policy_update;
     string pf;
     void'($value$plusargs("vdir=%s", vdir));
     do_reset();
+    if ($value$plusargs("valvec=%s", pf)) begin
+      valvec(pf);
+      finish("tb_policy_update[valvec]");
+    end
     if ($test$plusargs("measure")) begin
       void'($value$plusargs("policy=%s", pf));
       read_policy(pf);

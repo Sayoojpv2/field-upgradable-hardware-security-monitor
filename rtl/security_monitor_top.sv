@@ -94,6 +94,10 @@ module security_monitor_top #(
         .bank_wdata(wdata), .val_start(vstart), .val_req_owner(vreq), .val_root(vroot),
         .val_cand_version(vcand), .val_active_version(vact), .val_count(vcount),
         .val_malformed(vmal), .val_done(vdone), .val_ok(vok), .val_err(verr), .val_err_slot(verr_slot));
+
+`ifdef FORMAL
+`include "top_props.svh"
+`endif
     end
   endgenerate
 

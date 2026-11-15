@@ -45,3 +45,24 @@ Issues found and fixed (each with a regression test that fails without the fix):
 Also added: envelope ±1 boundary tests for every owner, in-authority permission changes, reset in
 SWITCH, owner-relabel test, CI pinned to ubuntu-24.04 with an ASan/UBSan step. Verified unchanged:
 all security, latency and recovery results. Bounded design at 8 rules: 11 606 → 11 614 cells.
+
+## 2026-11-15 — milestone 4: formal verification and independent assurance
+
+- `formal/`: an executable specification, property files and harnesses for the monitor, validator,
+  bank, controller and top level, checked with Yosys' built-in SAT engine (`make formal`, about
+  560 s).
+  - Proved: properties A–F.
+  - Bounded only: the end-to-end property, 40 cycles on 2 slots.
+  - 13 covers reached; 10 planted bugs each give a counterexample.
+- The race fixed in d426302 is rediscovered formally when its fix is removed. The trace is kept
+  in `formal/cex/`; it reaches the race through REVERT as well as activation.
+- `tests/independent_model.py`: an independent monitor and validator model with adversarial
+  vectors. The RTL agrees on 10 987 comparisons. Its first run's mismatches were a generator bug
+  (values wider than 32 bits), fixed and now rejected by a range check. No RTL defect was found.
+- Planted bug added: "controller activates a rejected candidate". The simulation mutation check
+  now catches 22/22.
+- SymbiYosys configuration and two CI jobs (`formal`, `formal-sby`) added. They have not run:
+  there is no SMT solver locally, and nothing has been pushed.
+- No RTL behaviour changed. The only RTL edits are `ifdef FORMAL` include lines, and synthesis
+  results are identical.
+

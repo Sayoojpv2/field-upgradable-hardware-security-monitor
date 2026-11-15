@@ -20,6 +20,9 @@ import trace_validator as tv  # noqa: E402
 from hsm_common import load_policy, policy_hex_words, validate_update, write_hex  # noqa: E402
 from policy_generator import scaled_policy  # noqa: E402
 
+sys.path.insert(0, str(ROOT / "tests"))
+import independent_model as indep  # noqa: E402  (shares no code with tools/)
+
 IVERILOG = os.environ.get("IVERILOG", "iverilog")
 VVP = os.environ.get("VVP", "vvp")
 BUILD = ROOT / "build"
@@ -45,6 +48,8 @@ def prepare_vectors():
         write_hex(VDIR / f"scaled_{n}.hex", policy_hex_words(scaled_policy(n)))
     for v in range(1, 5):
         tv.export_rtl(load_policy(ROOT / "examples" / f"policy_v{v}.json"), trace, VDIR / f"trace_v{v}.vec")
+    indep.write_monitor_files(VDIR)
+    indep.write_validator_file(VDIR / "indep_validator.hex")
     return trace
 
 
@@ -81,7 +86,17 @@ def regression_runs():
     runs.append((sm[1], ["+policy=build/vectors/policy_v4.hex", "+vectors=build/vectors/trace_v4.vec", "+check"],
                  "trace replay v4 == Python model (baseline)"))
     runs.append((sm[0], ["+vectors=build/vectors/trace_v1.vec", "+check"], "trace replay v1 == Python model (static)"))
-    runs.append((compile_tb("tb_policy_update"), ["+vdir=build/vectors"], "update flow, authority, rollback, reset"))
+    pu = compile_tb("tb_policy_update")
+    runs.append((pu, ["+vdir=build/vectors"], "update flow, authority, rollback, reset"))
+    # Independent reference model (tests/independent_model.py): adversarial policies on the unbounded
+    # design (any rule can be written there), the valid base policy on the bounded design, and the
+    # validator vectors on the bounded design.
+    for n in range(len(indep.monitor_policies())):
+        runs.append((sm[1], [f"+policy=build/vectors/indep_pol{n}.hex", f"+vectors=build/vectors/indep_txn{n}.vec", "+check"],
+                     f"independent model: monitor policy {n}"))
+    runs.append((sm[2], ["+policy=build/vectors/indep_pol0.hex", "+vectors=build/vectors/indep_txn0.vec", "+check"],
+                 "independent model: base policy, bounded design"))
+    runs.append((pu, ["+valvec=build/vectors/indep_validator.hex"], "independent model: validator vectors"))
     return runs
 
 
@@ -106,7 +121,7 @@ def main(argv=None):
         res = result(out)
         ok = res is not None and res[3] == "PASS"
         failed += not ok
-        extra = " ".join(l for l in out.splitlines() if l.startswith(("REPLAY", "METRIC")))
+        extra = " ".join(l for l in out.splitlines() if l.startswith(("REPLAY", "METRIC", "VALVEC")))
         print(f"{'PASS' if ok else 'FAIL'}  {what:48} checks={res[1] if res else '?':<6} {extra}")
         if not ok:
             print("\n".join(l for l in out.splitlines() if "ERROR" in l or "mismatch" in l)[:3000] or out[-3000:])

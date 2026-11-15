@@ -6,6 +6,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.vcd
+# ...except the counterexample kept as a regression artifact
+!formal/cex/*.vcd
 *.key
 # regenerated deterministically by `make experiments`
 results/raw/

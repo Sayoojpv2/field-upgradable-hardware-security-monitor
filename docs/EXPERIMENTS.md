@@ -38,6 +38,8 @@ behaviour once all three weaknesses are known. The identical corpus is used for 
 | Hold cycles | Cycles with `txn_ready` low during each update | `transient.csv`, `latency.csv` |
 | Resources | Yosys 0.70 `synth -flatten` generic cells and flip-flops; `synth -flatten -lut 6` generic 6-input LUTs; `check -assert`; latches rejected | `synth.csv`, `synth_modules.csv` |
 | Recovery | C fault-injection tests: 7 fault points + torn-write sweep over every byte of the store writes | `fault_injection.json` |
+| Formal verification complexity | `scripts/run_formal.py`: status, induction length or BMC depth, largest SAT instance (variables) and run time of every job, cover and planted-bug run | `formal.json`, `formal.csv`, `formal.md` |
+| Independent model agreement | `run_rtl.py`: RTL decisions and validator outcomes compared with `tests/independent_model.py` | testbench output (`VALVEC`, `+check`) |
 | Release gate | `trace_validator.compare` on every example policy and candidate. A candidate is refused if the hardware model rejects it, a legitimate transaction becomes rejected, a malicious one becomes accepted, or a changed rule is exercised by no trace | `trace_validation.csv` |
 
 ## Caveats

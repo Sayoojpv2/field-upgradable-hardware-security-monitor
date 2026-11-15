@@ -48,6 +48,8 @@ MUTANTS = [
      "else if (cand_version <= active_version)", "else if (cand_version < active_version)"),
     ("validator skips last overlap pair", "policy_validator.sv",
      "if (i == NRULES - 2) st <= VS_FINAL;", "if (i == NRULES - 3) st <= VS_FINAL;"),
+    ("controller activates a rejected candidate", "policy_update_controller.sv",
+     "if (val_ok) state <= S_READY;", "if (1'b1) state <= S_READY;"),
     ("switch does not wait for bus idle", "policy_update_controller.sv",
      "else if (bus_idle)                          state <= S_SWITCH;", "else                                        state <= S_SWITCH;"),
     ("no transaction hold during switch", "policy_update_controller.sv",

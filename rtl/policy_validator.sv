@@ -101,4 +101,8 @@ module policy_validator #(
       endcase
     end
 
+`ifdef FORMAL
+`include "validator_props.svh"
+`endif
+
 endmodule
