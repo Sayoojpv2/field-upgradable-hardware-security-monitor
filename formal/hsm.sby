@@ -40,7 +40,10 @@ controller: read -formal -sv fv_controller.sv
 top: read -formal -sv fv_top.sv
 spec_lemmas: read -formal -sv fv_spec.sv
 monitor_protocol: prep -top fv_monitor
-monitor_sound monitor_deny monitor_priority monitor_grant: prep -top bus_security_monitor
+monitor_sound: prep -top bus_security_monitor
+monitor_deny: prep -top bus_security_monitor
+monitor_priority: prep -top bus_security_monitor
+monitor_grant: prep -top bus_security_monitor
 spec_lemmas: prep -top fv_spec
 validator: prep -top fv_validator
 bank: prep -top fv_bank

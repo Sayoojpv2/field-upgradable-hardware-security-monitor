@@ -26,13 +26,15 @@ module tb_security_monitor;
     int fd, r;
     logic [31:0] m, a, w, p, b, e, rr;
     fd = $fopen(f, "r");
-    if (fd == 0) begin errors++; $display("ERROR: cannot open %s", f); return; end
-    r = $fscanf(fd, "%h\n", nv);
-    for (int i = 0; i < nv && i < MAXV; i++) begin
-      r = $fscanf(fd, "%h %h %h %h %h %h %h\n", m, a, w, p, b, e, rr);
-      vm[i] = m[3:0]; va[i] = a; vw[i] = w[0]; vp[i] = p[0]; vb[i] = b[7:0]; ve[i] = e[0]; vr[i] = rr[3:0];
+    if (fd == 0) begin errors++; $display("ERROR: cannot open %s", f); end  // no `return`: Icarus 12 rejects it in tasks
+    else begin
+      r = $fscanf(fd, "%h\n", nv);
+      for (int i = 0; i < nv && i < MAXV; i++) begin
+        r = $fscanf(fd, "%h %h %h %h %h %h %h\n", m, a, w, p, b, e, rr);
+        vm[i] = m[3:0]; va[i] = a; vw[i] = w[0]; vp[i] = p[0]; vb[i] = b[7:0]; ve[i] = e[0]; vr[i] = rr[3:0];
+      end
+      $fclose(fd);
     end
-    $fclose(fd);
   endtask
 
   task automatic apply_policy();
