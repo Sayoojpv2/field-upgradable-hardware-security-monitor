@@ -29,13 +29,15 @@ module bus_security_monitor #(
   wire accept = txn_valid && txn_ready;
 
   // 1) Match: a rule covers the transaction if owner == master and start address is in range.
+  // (generate loop, not an always_comb loop: Icarus Verilog 12 can spin forever in zero time on
+  //  the always_comb form when two rules share an owner)
   logic [NRULES-1:0] hit;
-  always_comb
-    for (int k = 0; k < NRULES; k++)
-      hit[k] = r_valid(rules[k*RULE_W +: RULE_W]) &&
-               r_owner(rules[k*RULE_W +: RULE_W]) == txn_master &&
-               txn_addr >= r_start(rules[k*RULE_W +: RULE_W]) &&
-               txn_addr <= r_end(rules[k*RULE_W +: RULE_W]);
+  for (genvar k = 0; k < NRULES; k++) begin : g_hit
+    assign hit[k] = r_valid(rules[k*RULE_W +: RULE_W]) &&
+                    r_owner(rules[k*RULE_W +: RULE_W]) == txn_master &&
+                    txn_addr >= r_start(rules[k*RULE_W +: RULE_W]) &&
+                    txn_addr <= r_end(rules[k*RULE_W +: RULE_W]);
+  end
 
   // 2) Deterministic order: lowest slot index wins. (Validated policies never overlap,
   //    so at most one rule can hit; the order matters only for the unbounded baseline.)
