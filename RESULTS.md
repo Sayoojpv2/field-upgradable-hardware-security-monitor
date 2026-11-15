@@ -1,6 +1,6 @@
 # Results
 
-Every number below comes from a run in this repository: an RTL simulation (Icarus Verilog 13.0),
+Every number below comes from a run in this repository: an RTL simulation (Icarus Verilog 13.0; the RTL tests also pass on 12.0, which CI uses),
 a Yosys 0.70 run (synthesis or formal), the firmware test binary (GCC 16.2), or the generated
 packages. Regenerate them with `make test`, `make experiments` and `make formal`. Data: `results/*.csv`, `results/summary.json`; per-decision
 logs are regenerated in `results/raw/` by `make experiments` and are not committed. Method and caveats: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
@@ -13,17 +13,18 @@ These are simulation and generic-synthesis results, not FPGA, ASIC or hardware m
 | Python (`pytest`: tools, cross-language constants, independent model vs production model) | 34 passed |
 | C firmware (`test_firmware`) | 1 239 checks, 0 failures |
 | C firmware under UBSan (`-fsanitize=undefined -fsanitize-trap=all`, local) | 1 239 checks, no trap |
-| C firmware under ASan + UBSan | configured in CI only; not run (MinGW has no ASan runtime) |
+| C firmware under ASan + UBSan (`-fsanitize=address,undefined`, GitHub Actions, GCC on Ubuntu 24.04) | 1 239 checks, 0 failures, no sanitizer report (MinGW has no ASan runtime, so CI only) |
 | RTL regression (`run_rtl.py`) | 25/25 testbench runs, 31 829 checks, 0 errors |
 | RTL vs independent reference model (`tests/independent_model.py`) | 10 987 comparisons, 0 mismatches (see section 9) |
 | Firmware → RTL MMIO replay (C test suite) | 17 852 operations, 2 993 read-backs identical, 431 resets |
 | Firmware → RTL MMIO replay (demo) | 381 operations, identical |
 | Mutation check, simulation (planted RTL security bugs, every mutant must compile) | 22/22 caught |
 | Formal verification (`make formal`, Yosys SAT) | 10 jobs PROVED, 1 BOUNDED PASS (depth 40), 13/13 covers reached, 10/10 planted bugs give a counterexample (section 10) |
-| SymbiYosys (`formal/hsm.sby`, CI job `formal-sby`) | NOT RUN (no SMT solver locally; nothing pushed) |
+| SymbiYosys (`formal/hsm.sby`, smtbmc + yices, GitHub Actions job `formal-sby`) | 10/10 tasks PASS (k-induction); 2/2 planted bugs give FAIL |
 | Package fuzzing (3 000 random corruptions of a signed package) | 0 accepted |
 | Truncation (every length shorter than a valid package) | all rejected as `TRUNCATED` |
 | Yosys `check -assert`, latch scan | clean, 0 latches in all 24 configurations |
+| GitHub Actions (Ubuntu 24.04: GCC 13.3, Icarus Verilog 12.0, Python 3.12) | every job passes: ASan + UBSan C tests, `make test`, `make synth`, `make demo`, `make formal`, SymbiYosys with planted-bug check |
 
 ## 2. The three scenarios on unchanged RTL
 
@@ -110,9 +111,9 @@ update logic: 1 cycle in all three designs.
 
 | Design | Rules | Gate cells | Flip-flops | Generic LUT6 |
 |---|---:|---:|---:|---:|
-| Static | 2 / 4 / 6 / 8 | 231 / 269 / 284 / 330 | 7 / 8 / 9 / 9 | 34 / 48 / 54 / 61 |
-| Configurable (unbounded) | 2 / 4 / 6 / 8 | 1 485 / 2 558 / 3 641 / 4 721 | 167 / 328 / 489 / 649 | 303 / 467 / 681 / 831 |
-| Bounded dual-bank | 2 / 4 / 6 / 8 | 4 403 / 6 787 / 8 950 / 11 614 | 470 / 791 / 1 112 / 1 432 | 1 183 / 2 014 / 2 769 / 3 516 |
+| Static | 2 / 4 / 6 / 8 | 228 / 273 / 284 / 315 | 7 / 8 / 9 / 9 | 35 / 48 / 54 / 61 |
+| Configurable (unbounded) | 2 / 4 / 6 / 8 | 1 485 / 2 559 / 3 641 / 4 721 | 167 / 328 / 489 / 649 | 303 / 470 / 681 / 831 |
+| Bounded dual-bank | 2 / 4 / 6 / 8 | 4 420 / 6 811 / 8 968 / 11 603 | 470 / 791 / 1 112 / 1 432 | 1 213 / 2 089 / 2 775 / 3 496 |
 
 Per module, bounded design, 8 rules (hierarchy kept):
 
@@ -220,10 +221,9 @@ burst is granted flips the bank with 2 beats outstanding.
 | Bounded authority, atomic switch (B–F) | n/a (cannot be updated) | do not hold by design (8/8 malicious updates took effect) | PROVED (unit level) + 40-cycle end-to-end BMC |
 | Decision latency | 1 cycle | 1 cycle | 1 cycle |
 | Validation / switch cost | n/a | none | 39 cycles (8 slots) / about 15 held cycles on a busy bus |
-| Generic cells / FFs, 8 rules | 330 / 9 | 4 721 / 649 | 11 614 / 1 432 |
+| Generic cells / FFs, 8 rules | 315 / 9 | 4 721 / 649 | 11 603 / 1 432 |
 
 ## 12. Not measured
 
 Timing (Fmax), power, FPGA or ASIC area, signature verification time, firmware code size on a
-target CPU, anything on physical hardware, formal verification of the C firmware, and the
-SymbiYosys/SMT runs (configured for CI, not executed).
+target CPU, anything on physical hardware, and formal verification of the C firmware.

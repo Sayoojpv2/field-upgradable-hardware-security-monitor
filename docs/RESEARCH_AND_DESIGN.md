@@ -335,8 +335,8 @@ next successful boot.
   of which must make the regression fail. A mutant that does not compile aborts the check rather
   than counting as caught. Its first run found an untested corner: an overlap in the last slot
   pair. A test for it was added.
-- **Sanitizers**: the C suite runs clean under UBSan (trap mode) locally. CI adds
-  AddressSanitizer + UBSan on Ubuntu, which has not run yet.
+- **Sanitizers**: the C suite runs clean under UBSan (trap mode) locally, and under
+  AddressSanitizer + UBSan on Ubuntu in GitHub Actions.
 
 - **Formal verification** (`formal/`, `make formal`). The properties follow the transaction-checker
   method of Nokes et al.: master ID = subject, address range = object, read/write + privilege +

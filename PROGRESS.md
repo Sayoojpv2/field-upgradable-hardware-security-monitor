@@ -66,3 +66,30 @@ all security, latency and recovery results. Bounded design at 8 rules: 11 606 �
 - No RTL behaviour changed. The only RTL edits are `ifdef FORMAL` include lines, and synthesis
   results are identical.
 
+
+## 2026-11-15 — milestone 5: release v1.0.0
+
+- Published to GitHub; GitHub Actions ran for the first time and found four real problems, all
+  fixed:
+  - Icarus Verilog 12 (Ubuntu 24.04) rejected two testbench constructs: a `return` inside a task
+    and an array literal.
+  - Icarus 12 also spun forever in zero simulated time on the monitor's `always_comb` loop that
+    computes rule hits, once two rules share an owner. The loop is now a generate loop of
+    continuous assigns. Yosys `equiv_*` proves the old and new monitor equivalent, and synthesis
+    of the monitor alone is unchanged (3 496 cells). Flattened totals move slightly as Yosys optimises
+    the new structure: bounded design at 8 rules 11 614 → 11 603 cells, static 330 → 315,
+    unbounded 4 721 unchanged. A testbench watchdog and wall-clock limits now turn any hang into
+    a FAIL.
+  - `formal/hsm.sby` put several task names on one line prefix, so every SymbiYosys task failed
+    before reaching the solver.
+  - `make formal` had random job crashes on fresh CI runners. yowasp-runtime writes its 220 MB
+    compiled-module cache non-atomically, and parallel first runs loaded a half-written copy. The
+    module is now compiled once before the parallel jobs start, a Yosys crash is recorded as
+    ERROR, and the Yosys build is pinned to the one that produced `results/`.
+- SymbiYosys (smtbmc + yices) passes all 10 proof tasks on CI. Two planted bugs must each give a
+  FAIL there, so the result is not vacuous. The C suite is clean under ASan + UBSan on CI.
+- `make demo` is now a ten-step, self-checking walkthrough (`scripts/demo.py`).
+- The README was rewritten for portfolio review.
+- No RTL or firmware behaviour changed: the one RTL edit is the equivalence-proved rewrite above.
+  A clean local regression reproduced every result, with Icarus 13.0 for the full run and with
+  Icarus 12.0 for the RTL, mutation and demo runs.
