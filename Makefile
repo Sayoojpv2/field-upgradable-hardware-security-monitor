@@ -89,18 +89,9 @@ CORPUS := build/traces/corpus.csv
 $(CORPUS): tools/trace_validator.py tools/hsm_common.py .venv/.installed
 	$(PY) tools/trace_validator.py gen --out $@
 
-GATE = $(PY) tools/trace_validator.py compare --trace $(CORPUS)
+# ten-step walkthrough: RTL decisions, release gate, hardware validation, device run with power loss
 demo: $(DEMOBIN) $(PKGS) $(CORPUS)
-	@echo "== [A] Offline release gate: trace validation before signing (each verdict is checked)"
-	$(GATE) --expect recommend --baseline examples/policy_v1.json --candidate examples/policy_v2.json --report build/reports/policy_v2.md
-	$(GATE) --expect recommend --baseline examples/policy_v2.json --candidate examples/policy_v3.json --report build/reports/policy_v3.md
-	$(GATE) --expect recommend --baseline examples/policy_v3.json --candidate examples/policy_v4.json --report build/reports/policy_v4.md
-	$(GATE) --expect reject --baseline examples/policy_v1.json --candidate examples/candidates/cand_v2_overbroad.json --report build/reports/cand_v2_overbroad.md
-	$(GATE) --expect reject --baseline examples/policy_v4.json --candidate examples/candidates/cand_v5_dma_reopen.json --report build/reports/cand_v5_dma_reopen.md
-	@echo "== [B] Device: firmware + host hardware model"
-	$(DEMOBIN) build/pkgs build/fw/mmio_demo.log
-	@echo "== [C] The same register traffic replayed into the RTL"
-	$(PY) scripts/run_rtl.py --only-replay --replay build/fw/mmio_demo.log
+	$(PY) scripts/demo.py --fw $(DEMOBIN)
 
 experiments: sim-rtl synth
 	$(PY) scripts/run_experiments.py
