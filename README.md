@@ -214,7 +214,7 @@ make test
 | `make test` | Python tests, C firmware tests, all RTL testbenches, mutation check |
 | `make test-c` | Firmware: crypto interoperability, fuzzing, owner-bounded installs, fault injection |
 | `make sim-rtl` | RTL regression, independent-model comparison, firmware register replay |
-| `make formal` | Proofs, bounded check, covers, planted bugs (Yosys SAT) → `results/formal.*`; 10–15 min, most of it the 40-cycle bounded check |
+| `make formal` | Proofs, bounded check, covers, planted bugs (Yosys SAT) → `results/formal.*`; 8–30 min (about 8 on CI), most of it the 40-cycle bounded check |
 | `make synth` | Yosys synthesis, 3 designs × 2/4/6/8 rules → `results/synth.csv` |
 | `make demo` | The ten-step walkthrough above |
 | `make experiments` | All comparative experiments and plots → `results/` |

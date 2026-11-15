@@ -194,8 +194,10 @@ which the testbench truncated. The generator now rejects any value wider than 32
 
 ## 10. Formal verification
 
-Engine: Yosys 0.70 built-in SAT (MiniSAT) via yowasp-yosys. Total run time of `make formal`:
-about 560 s on this laptop. Full table with solver sizes: [results/formal.md](results/formal.md);
+Engine: Yosys 0.70 built-in SAT (MiniSAT) via yowasp-yosys. Total run time of `make formal`
+ranges from about 8 minutes (GitHub Actions) to about 30 minutes (this laptop under load). It is
+dominated by the 40-cycle bounded check, which took 450–1 520 s across runs, and the SAT problem
+sizes do not vary. Full table with solver sizes: [results/formal.md](results/formal.md);
 method, assumptions and limitations: [formal/README.md](formal/README.md).
 
 | Property | Module | Method | Result |
