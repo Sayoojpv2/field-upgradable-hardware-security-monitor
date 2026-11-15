@@ -89,9 +89,13 @@ def yosys(name, top, extra, defines, sat_cmd, rtl_dir: Path):
               f"prep -flatten -top {top}; async2sync; opt -full; dffunmap; {sat_cmd}")
     log = OUT / f"{name}.log"
     t0 = time.time()
-    subprocess.run([YOSYS, "-q", "-l", log.relative_to(ROOT).as_posix(), "-p", script], cwd=ROOT,
-                   capture_output=True, text=True)
-    return log.read_text(errors="replace") if log.exists() else "", round(time.time() - t0, 1)
+    r = subprocess.run([YOSYS, "-q", "-l", log.relative_to(ROOT).as_posix(), "-p", script], cwd=ROOT,
+                       capture_output=True, text=True)
+    text = log.read_text(errors="replace") if log.exists() else ""
+    if r.returncode != 0:  # no -verify, so a failed proof exits 0: a non-zero status is a tool failure
+        text += f"\nERROR: yosys exited with status {r.returncode}\n{r.stderr[-4000:]}"
+        log.write_text(text)
+    return text, round(time.time() - t0, 1)
 
 
 def classify(mode, text):
@@ -173,6 +177,9 @@ def run_mutant(desc, job_name, override):
 def main():
     quick = "--quick" in sys.argv
     jobs = [j for j in JOBS if not (quick and j[5] == "bmc")]
+    # yowasp-runtime writes its compiled-module cache without locking or an atomic rename, so parallel
+    # first runs can load a half-written module and crash. Compile it once before going parallel.
+    subprocess.run([YOSYS, "-V"], cwd=ROOT, capture_output=True, check=True)
     with ThreadPoolExecutor(max_workers=4) as ex:
         results = list(ex.map(run_job, jobs))
         covers = [] if quick else list(ex.map(run_cover, COVERS))

@@ -2,7 +2,6 @@ cryptography>=42
 matplotlib>=3.8
 pytest>=8
 # Pinned: the formal and synthesis results in results/ were produced with this exact build.
-# On CI, yowasp-yosys 0.71 ended three formal jobs early without a result (not investigated).
 yowasp-yosys==0.70.0.0.post1259
 yowasp-runtime==1.96
 wasmtime==47.0.1
