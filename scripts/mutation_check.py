@@ -89,7 +89,11 @@ def regression_fails(rtl_dir: Path) -> str | None:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
         if r.returncode:   # a mutant that does not compile proves nothing about the tests
             raise CompileError(f"{tb}: {(r.stdout + r.stderr)[-500:]}")
-        r = subprocess.run([VVP, "-n", str(out.relative_to(ROOT)), *args], cwd=ROOT, capture_output=True, text=True)
+        try:
+            r = subprocess.run([VVP, "-n", str(out.relative_to(ROOT)), *args], cwd=ROOT, capture_output=True,
+                               text=True, timeout=900)
+        except subprocess.TimeoutExpired:   # a hang is a failing regression (and fails the baseline check)
+            return f"{tb} {params} {' '.join(args)[:40]} (timeout)"
         if not re.search(r"TB_RESULT .* PASS", r.stdout):
             return f"{tb} {params} {' '.join(args)[:40]}"
     return None

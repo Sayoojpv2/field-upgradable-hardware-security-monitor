@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env:
+  PYTHONUNBUFFERED: "1"   # progress lines reach the log even if a step is cancelled
+
 jobs:
   build-test:
     runs-on: ubuntu-24.04   # pinned: Icarus/GCC versions differ between images

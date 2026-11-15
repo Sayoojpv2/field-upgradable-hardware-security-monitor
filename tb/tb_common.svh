@@ -17,6 +17,16 @@
   integer checks = 0, errors = 0, cycle = 0;
   always @(posedge clk) cycle <= cycle + 1;
 
+  // Watchdog: a run that stops making progress fails instead of hanging. The longest regular run
+  // (the independent-model validator vectors) ends after about 1.3 ms of simulated time.
+  initial begin
+    #20_000_000;   // 20 ms
+    errors++;
+    $display("ERROR: watchdog: no result after 20 ms of simulated time (cycle %0d)", cycle);
+    $display("TB_RESULT tb=watchdog checks=%0d errors=%0d FAIL", checks, errors);
+    $finish;
+  end
+
   task automatic check(input bit cond, input string msg);
     checks++;
     if (!cond) begin errors++; $display("ERROR @%0t (cycle %0d): %s", $time, cycle, msg); end

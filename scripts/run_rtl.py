@@ -25,6 +25,7 @@ import independent_model as indep  # noqa: E402  (shares no code with tools/)
 
 IVERILOG = os.environ.get("IVERILOG", "iverilog")
 VVP = os.environ.get("VVP", "vvp")
+VVP_TIMEOUT = 900   # seconds of wall time per simulation; the longest regular run takes a few seconds
 BUILD = ROOT / "build"
 VDIR = BUILD / "vectors"
 RTL = [f"rtl/{p.name}" for p in sorted((ROOT / "rtl").glob("*.sv"))]
@@ -67,7 +68,11 @@ def compile_tb(tb: str, params: dict | None = None) -> Path:
 
 
 def run_vvp(vvp: Path, plusargs=()) -> str:
-    r = subprocess.run([VVP, "-n", str(vvp.relative_to(ROOT)), *plusargs], cwd=ROOT, capture_output=True, text=True)
+    try:
+        r = subprocess.run([VVP, "-n", str(vvp.relative_to(ROOT)), *plusargs], cwd=ROOT, capture_output=True,
+                           text=True, timeout=VVP_TIMEOUT)
+    except subprocess.TimeoutExpired:   # no TB_RESULT line, so the run counts as failed
+        return f"ERROR: {vvp.name} {' '.join(plusargs)} did not finish within {VVP_TIMEOUT} s"
     return r.stdout + r.stderr
 
 
